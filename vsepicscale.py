@@ -18,14 +18,47 @@ class BE_OT_AddTransformStrip(bpy.types.Operator):
 
 
     def execute(self, context):
+        data = bpy.data
+
+        seq = context.scene.sequence_editor.active_strip
+        print("Doing")
+        
+        
+        
+        
+        #### find start start and end frame 
+        start_frame = seq.frame_start
+        duration = seq.frame_final_duration
+        end_frame = seq.frame_start + seq.frame_final_duration
+        
+        filepath = seq.directory + "\\" + seq.filename
+        
+        ###load pic in blender
+
+        bpy.ops.image.open(filepath=filepath, directory=seq.directory, files=[{"name":seq.filename}], relative_path=True, show_multiview=False)
+        
+        pic_width = data.images[seq.filename].size[1]
+        pic_height = data.images[seq.filename].size[1]
+
+
+
+        bpy.ops.sequencer.effect_strip_add(type='TRANSFORM', frame_start=start_frame, frame_end=end_frame)
+
+        transformStrip = context.scene.sequence_editor.active_strip
+
+
+        transformStrip.scale_start_x = 1 
+        transformStrip.scale_start_y = pic_width/pic_height
+
+        
         return {'FINISHED'}
 
 
-class BE_PT_pciscaleUI(Panel):
-    bl_label = 'Attract'
+class BE_PT_pciscaleUI(bpy.types.Panel):
+    bl_label = 'MuseumsLove'
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = 'Strip'
+    bl_category = 'VSEPicScale'
 
     def draw(self, context):
 
