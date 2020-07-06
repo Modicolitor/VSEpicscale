@@ -1,11 +1,4 @@
-bl_info = {  # für export als addon
-    "name": "VSEPicScale",
-    "author": "Modicolitor",
-    "version": (0, 1),
-    "blender": (2, 83, 0),
-    "location": "SEQUENCE_EDITOR > Tools",
-    "description": "Scales pictures automatically by adding and adjusting a transform strip",
-    "category": "Object"}
+
 
 
 import bpy 
@@ -21,24 +14,22 @@ class BE_OT_AddTransformStrip(bpy.types.Operator):
         data = bpy.data
 
         seq = context.scene.sequence_editor.active_strip
-        print("Doing")
-        
-        
-        
-        
+             
         #### find start start and end frame 
         start_frame = seq.frame_start
         duration = seq.frame_final_duration
         end_frame = seq.frame_start + seq.frame_final_duration
-        
-        filepath = seq.directory + "\\" + seq.filename
+        filename = seq.strip_elem_from_frame(context.scene.frame_current).filename
+
+
+        filepath = seq.directory + "\\" + filename
         
         ###load pic in blender
 
-        bpy.ops.image.open(filepath=filepath, directory=seq.directory, files=[{"name":seq.filename}], relative_path=True, show_multiview=False)
+        bpy.ops.image.open(filepath=filepath, directory=seq.directory, files=[{"name":filename}], relative_path=True, show_multiview=False)
         
-        pic_width = data.images[seq.filename].size[1]
-        pic_height = data.images[seq.filename].size[1]
+        pic_width = data.images[filename].size[0]
+        pic_height = data.images[filename].size[1]
 
 
 
@@ -48,10 +39,29 @@ class BE_OT_AddTransformStrip(bpy.types.Operator):
 
 
         transformStrip.scale_start_x = 1 
-        transformStrip.scale_start_y = pic_width/pic_height
+        transformStrip.scale_start_y = pic_height/pic_width
 
         
         return {'FINISHED'}
+
+
+bpy.types.Scene.PicScalefactor = bpy.props.FloatProperty(default=1)
+
+
+
+class BE_OT_ScaleAdPicture(bpy.types.Operator):
+    bl_idname = "object.be_ot_scaleadpicture"
+    bl_label = "BE_OT_ScaleAdPicture"
+
+    def execute(self, context):
+        
+        seq = context.scene.sequence_editor.active_strip
+
+        seq.scale_start_x *= context.scene.PicScalefactor 
+        seq.scale_start_y *= context.scene.PicScalefactor 
+
+        return {'FINISHED'}
+
 
 
 class BE_PT_pciscaleUI(bpy.types.Panel):
@@ -59,6 +69,7 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
     bl_category = 'VSEPicScale'
+
 
     def draw(self, context):
 
@@ -76,13 +87,11 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
 
         subcol = col.column()
        
-        subcol.label(text="Adjust")
-        subcol.operator("object.be_ot_addtransformstrip", text="Add Coupling", icon="PLUS")  # zeige button an
+        subcol.label(text="Make Adjusted Transform strip")
+        subcol.operator("object.be_ot_addtransformstrip", text="Add Transform Strip", icon="PLUS")  # zeige button an
         
+        subcol = col.column()
+        subcol.label(text="Adjust pic scale (factor of transform)")
+        subcol.operator("object.be_ot_scaleadpicture", text="Adjust Transform Strip", icon="PLUS") 
+        subcol.prop(context.scene, "PicScalefactor")
 
-
-classes = (
-    BE_OT_AddTransformStrip,
-    BE_PT_pciscaleUI
-    )
-register, unregister = bpy.utils.register_classes_factory(classes)
