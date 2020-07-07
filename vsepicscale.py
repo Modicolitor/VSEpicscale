@@ -42,11 +42,14 @@ class BE_OT_AddTransformStrip(bpy.types.Operator):
 
         transformStrip = context.scene.sequence_editor.active_strip
 
-        r_height = context.scene.render.resolution_x
-
-        transformStrip.scale_start_x = 1
-        transformStrip.scale_start_y = r_height/pic_height
-
+        r_height = context.scene.render.resolution_y
+        r_width = context.scene.render.resolution_x
+        # if pic_height >= pic_width:
+        transformStrip.scale_start_x = pic_width/r_width
+        transformStrip.scale_start_y = pic_height/r_height
+        # else:
+        #    transformStrip.scale_start_x = pic_width/r_width
+        #    transformStrip.scale_start_y = pic_height/r_height
         return {'FINISHED'}
 
 
