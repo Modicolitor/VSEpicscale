@@ -2,6 +2,7 @@
 
 import bpy
 from operator import attrgetter
+import ntpath
 
 
 class BE_OT_AddTransformStrip(bpy.types.Operator):
@@ -105,6 +106,9 @@ class BE_OT_SceneStripWStab(bpy.types.Operator):
             selection_start_channel = min(
                 selection, key=attrgetter("channel")).channel
 
+            # information about movie file
+
+            filepath = context.selected_sequences[0].filepath
             # Create new scene for the scene strip
             bpy.ops.scene.new(type="FULL_COPY")
 
@@ -131,9 +135,70 @@ class BE_OT_SceneStripWStab(bpy.types.Operator):
                 frame_start=selection_start_frame, channel=selection_start_channel, scene=new_scene_name
             )
             scene_strip = context.selected_sequences[0]
-        # scene_strip.use_sequence = True
 
+        # scene_strip.use_sequence = True
+            if context.scene.StabBool:
+                self.StabOption(context, start_scene_name,
+                                new_scene_name, filepath)
         return {"FINISHED"}
+
+    def StabOption(self, context, start_scene_name, new_scene_name, filepath):
+        print("stab should start")
+        bpy.context.window.scene = bpy.data.scenes[new_scene_name]
+
+        # parsing filename
+        filepath, filename = ntpath.split(filepath)
+        moviefile = filepath + filename
+        print(f"file {filepath} filename {filename} moviefile {moviefile}")
+        bpy.ops.clip.open(directory=filepath, files=[
+                          {"name": filename}], relative_path=True)
+
+        moviefile = filepath + filename
+        print(moviefile)
+
+        bpy.context.scene.use_nodes = True
+        # compoistor node create node tree
+        # C.scene.node_tree.nodes.new(
+
+        active = context.scene.node_tree.nodes.active
+        #mat = bpy.data.materials['AdvOceanMat']
+        # macht einen Diffuseshader
+        # mat.node_tree.nodes.new('ShaderNodeBsdfDiffuse')
+        node_tree = context.scene.node_tree
+        nodes = node_tree.nodes
+
+        links = node_tree.links
+
+        for node in nodes:
+            nodes.remove(node)
+
+        data = bpy.data
+        # Ocean
+        nodemov = nodes.new('CompositorNodeMovieClip')  # glossyshader machen
+        nodemov.location = (-1200, 000)
+        nodemov.clip = data.movieclips[filename]
+
+        nodescale = nodes.new('CompositorNodeScale')  # glossyshader machen
+        nodescale.location = (-900, 000)
+
+        nodestab = nodes.new('CompositorNodeStabilize')  # glossyshader machen
+        nodestab.location = (-600, 000)
+        nodestab.clip = data.movieclips[filename]
+
+        nodecomp = nodes.new('CompositorNodeComposite')  # glossyshader machen
+        nodecomp.location = (-000, 000)
+
+        # link basic OceanMaterial zum ersen Mix shader
+        links.new(nodemov.outputs[0],
+                  nodescale.inputs[0])
+        links.new(nodescale.outputs[0],
+                  nodestab.inputs[0])
+        links.new(nodestab.outputs[0],
+                  nodecomp.inputs[0])
+
+        bpy.ops.workspace.append_activate(idname='MotionTracking')
+
+        context.space_data.clip = data.movieclips[filename]
 
 
 class BE_PT_pciscaleUI(bpy.types.Panel):
@@ -175,6 +240,7 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
                 subcol.prop(seq, "translate_start_x")
                 subcol.prop(seq, "translate_start_y")
 
+        subcol = col.column()
         subcol.operator("object.be_ot_scenestripwstab",
                         text="SceneStrip", icon="PLUS")
         subcol.prop(context.scene, "StabBool", text="Stabilizer")
