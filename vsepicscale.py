@@ -1,6 +1,7 @@
 
 
 import bpy
+from operator import attrgetter
 
 
 class BE_OT_AddTransformStrip(bpy.types.Operator):
@@ -54,6 +55,7 @@ class BE_OT_AddTransformStrip(bpy.types.Operator):
 
 
 bpy.types.Scene.PicScalefactor = bpy.props.FloatProperty(default=1)
+bpy.types.Scene.StabBool = bpy.props.BoolProperty(default=True)
 
 
 class BE_OT_ScaleAdPicture(bpy.types.Operator):
@@ -76,6 +78,62 @@ class BE_OT_ScaleAdPicture(bpy.types.Operator):
         seq.scale_start_y *= context.scene.PicScalefactor
 
         return {'FINISHED'}
+
+
+class BE_OT_SceneStripWStab(bpy.types.Operator):
+    bl_idname = "object.be_ot_scenestripwstab"
+    bl_label = "BE_OT_SceneStripWStab"
+
+    move_to_first_frame: bpy.props.BoolProperty(
+        name="Move to First Frame",
+        description="The strips will start at frame 1 on the new scene",
+        default=True,
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return context.selected_sequences
+
+    def execute(self, context):
+        start_scene_name = context.scene.name
+
+        if len(context.selected_sequences) != 0:
+            selection = context.selected_sequences[:]
+            selection_start_frame = min(
+                selection, key=attrgetter("frame_final_start")
+            ).frame_final_start
+            selection_start_channel = min(
+                selection, key=attrgetter("channel")).channel
+
+            # Create new scene for the scene strip
+            bpy.ops.scene.new(type="FULL_COPY")
+
+            context.window.scene.name = context.selected_sequences[0].name
+            new_scene_name = context.window.scene.name
+
+            # after full copy also unselected strips are in the sequencer... Delete those strips
+            bpy.ops.sequencer.select_all(action="INVERT")
+            bpy.ops.power_sequencer.delete_direct()
+            frame_offset = selection_start_frame - 1
+            for s in context.sequences:
+                try:
+                    s.frame_start -= frame_offset
+                except Exception:
+                    continue
+            bpy.ops.sequencer.select_all()
+            bpy.ops.power_sequencer.preview_to_selection()
+
+            # Back to start scene
+            bpy.context.window.scene = bpy.data.scenes[start_scene_name]
+
+            bpy.ops.power_sequencer.delete_direct()
+            bpy.ops.sequencer.scene_strip_add(
+                frame_start=selection_start_frame, channel=selection_start_channel, scene=new_scene_name
+            )
+            scene_strip = context.selected_sequences[0]
+        # scene_strip.use_sequence = True
+
+        return {"FINISHED"}
 
 
 class BE_PT_pciscaleUI(bpy.types.Panel):
@@ -116,3 +174,7 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
                 subcol.label(text="Position")
                 subcol.prop(seq, "translate_start_x")
                 subcol.prop(seq, "translate_start_y")
+
+        subcol.operator("object.be_ot_scenestripwstab",
+                        text="SceneStrip", icon="PLUS")
+        subcol.prop(context.scene, "StabBool", text="Stabilizer")

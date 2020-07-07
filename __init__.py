@@ -1,7 +1,8 @@
-import bpy 
+import bpy
 from .vsepicscale import BE_OT_AddTransformStrip
 from .vsepicscale import BE_OT_ScaleAdPicture
 from .vsepicscale import BE_PT_pciscaleUI
+from .vsepicscale import BE_OT_SceneStripWStab
 
 bl_info = {  # für export als addon
     "name": "VSEPicScale",
@@ -13,11 +14,11 @@ bl_info = {  # für export als addon
     "category": "Object"}
 
 
-
 classes = (
     BE_OT_AddTransformStrip,
     BE_PT_pciscaleUI,
-    BE_OT_ScaleAdPicture
-    )
+    BE_OT_ScaleAdPicture,
+    BE_OT_SceneStripWStab,
+)
 
 register, unregister = bpy.utils.register_classes_factory(classes)
