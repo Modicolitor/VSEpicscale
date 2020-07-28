@@ -200,7 +200,7 @@ def main_writes_bat_file(context):
     value_start = 'cd ' + filelocation[:remove_filename]  # blender_file_path
 
     #value = 'blender -b "' + filelocation + '" -s ' + context.scene.my_string_prop_start + ' -e ' + context.scene.my_string_prop_end + ' -a'
-    value = 'python -m bpsrender ' + str(filelocation) + \
+    value = 'bpsrender ' + str(filelocation) + \
         ' -w ' + str(context.scene.Cores)
 
     if check_bat_file_type(batfile_path, blender_file_path):
