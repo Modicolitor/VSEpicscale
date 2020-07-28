@@ -3,6 +3,7 @@
 import bpy
 from operator import attrgetter
 import ntpath
+from Simple_Batch_Render import *
 
 
 class BE_OT_AddTransformStrip(bpy.types.Operator):
@@ -57,6 +58,7 @@ class BE_OT_AddTransformStrip(bpy.types.Operator):
 
 bpy.types.Scene.PicScalefactor = bpy.props.FloatProperty(default=1)
 bpy.types.Scene.StabBool = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.Cores = bpy.props.IntProperty(default=4)
 
 
 class BE_OT_ScaleAdPicture(bpy.types.Operator):
@@ -243,4 +245,12 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
         subcol = col.column()
         subcol.operator("object.be_ot_scenestripwstab",
                         text="SceneStrip", icon="PLUS")
-        subcol.prop(context.scene, "StabBool", text="Stabilizer")
+
+        subcol = col.column()
+        subcol.label(text="Quick Render")
+        subcol.prop(context.scene, "bat_file_path", text="Save bat file to: ")
+        subcol.prop(context.scene, "Cores", text="Number of Corse")
+        subcol.operator("vsepic.writes_bat_file")
+        subcol.operator("vsepic.erase_file_info")
+        subcol.operator("vsepic.open_file_in_notepad")
+        subcol.operator("vsepic.start_bat_file")

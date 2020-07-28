@@ -4,6 +4,11 @@ from .vsepicscale import BE_OT_ScaleAdPicture
 from .vsepicscale import BE_PT_pciscaleUI
 from .vsepicscale import BE_OT_SceneStripWStab
 
+from .Simple_Batch_Render import writes_bat_file
+from .Simple_Batch_Render import erase_file_info
+from .Simple_Batch_Render import open_file_in_notepad
+from .Simple_Batch_Render import start_bat_file
+
 bl_info = {  # für export als addon
     "name": "VSEPicScale",
     "author": "Modicolitor",
@@ -19,6 +24,10 @@ classes = (
     BE_PT_pciscaleUI,
     BE_OT_ScaleAdPicture,
     BE_OT_SceneStripWStab,
+    writes_bat_file,
+    erase_file_info,
+    open_file_in_notepad,
+    start_bat_file
 )
 
 register, unregister = bpy.utils.register_classes_factory(classes)
