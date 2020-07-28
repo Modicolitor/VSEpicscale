@@ -216,17 +216,19 @@ def compstabnodes(context, movieclip):
 
     nodemov = nodes.new('CompositorNodeMovieClip')  # glossyshader machen
     nodemov.location = (-1200, 000)
-    nodemov.clip = movieclip  # data.movieclips[filename]
 
     nodescale = nodes.new('CompositorNodeScale')  # glossyshader machen
     nodescale.location = (-900, 000)
 
     nodestab = nodes.new('CompositorNodeStabilize')  # glossyshader machen
     nodestab.location = (-600, 000)
-    nodestab.clip = movieclip  # data.movieclips[filename]
 
     nodecomp = nodes.new('CompositorNodeComposite')  # glossyshader machen
     nodecomp.location = (-000, 000)
+
+    if movieclip != None:
+        nodestab.clip = movieclip  # data.movieclips[filename]
+        nodemov.clip = movieclip  # data.movieclips[filename]
 
     # link basic OceanMaterial zum ersen Mix shader
     links.new(nodemov.outputs[0],
@@ -236,10 +238,42 @@ def compstabnodes(context, movieclip):
     links.new(nodestab.outputs[0],
               nodecomp.inputs[0])
 
-    bpy.ops.workspace.append_activate(idname='MotionTracking')
-    bpy.context.area.ui_type = 'CLIP_EDITOR'
+    if movieclip != None:
+        bpy.ops.workspace.append_activate(idname='MotionTracking')
+        bpy.context.area.ui_type = 'CLIP_EDITOR'
 
-    context.space_data.clip = movieclip  # data.movieclips[filename]
+        context.space_data.clip = movieclip  # data.movieclips[filename]
+
+
+class BE_OT_CorrectFPSOperator(bpy.types.Operator):
+    '''Takes a selected audio and an active Video and corrects the time difference with a speed control'''
+    bl_idname = "object.correctfps"
+    bl_label = "BE_OT_CorrectFPS"
+
+    @ classmethod
+    def poll(cls, context):
+
+        return len(context.selected_sequences) == 2 and context.scene.sequence_editor.active_strip.type == 'MOVIE'
+
+    def execute(self, context):
+
+        acseq = context.scene.sequence_editor.active_strip
+
+        selected_sequences = context.selected_sequences[:]
+        for se in selected_sequences:
+            if se != acseq:
+                selseq = se
+            se.select = False
+
+        frameend = selseq.frame_final_duration
+
+        acseq.select = True
+        bpy.ops.sequencer.effect_strip_add(
+            type='SPEED', frame_start=1, frame_end=26)
+
+        acseq.frame_final_duration = frameend
+
+        return {'FINISHED'}
 
 
 class BE_PT_pciscaleUI(bpy.types.Panel):
@@ -281,6 +315,7 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
                 subcol.prop(seq, "translate_start_x")
                 subcol.prop(seq, "translate_start_y")
 
+        subcol.operator("object.correctfps", text="Correct FPS")
         subcol = col.column()
         subcol.operator("object.be_ot_scenestripwstab",
                         text="SceneStrip", icon="PLUS")
@@ -310,6 +345,7 @@ class BE_OT_CompStabOperator(bpy.types.Operator):
         else:
             compstabnodes(context, context.scene.epicmovieclip)
 
+        bpy.context.area.ui_type = 'CompositorNodeTree'
         return {'FINISHED'}
 
 

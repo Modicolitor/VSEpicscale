@@ -6,6 +6,7 @@ from .vsepicscale import BE_OT_SceneStripWStab
 
 from .vsepicscale import BE_PT_VSECompUI
 from .vsepicscale import BE_OT_CompStabOperator
+from .vsepicscale import BE_OT_CorrectFPSOperator
 
 from .Simple_Batch_Render import writes_bat_file
 from .Simple_Batch_Render import erase_file_info
@@ -33,6 +34,7 @@ classes = (
     start_bat_file,
     BE_PT_VSECompUI,
     BE_OT_CompStabOperator,
+    BE_OT_CorrectFPSOperator,
 )
 
 register, unregister = bpy.utils.register_classes_factory(classes)
