@@ -3,7 +3,9 @@
 import bpy
 from operator import attrgetter
 import ntpath
-from Simple_Batch_Render import *
+from .Simple_Batch_Render import *
+from bpy.types import Scene, MovieClip
+import sys
 
 
 class BE_OT_AddTransformStrip(bpy.types.Operator):
@@ -59,13 +61,43 @@ class BE_OT_AddTransformStrip(bpy.types.Operator):
 bpy.types.Scene.PicScalefactor = bpy.props.FloatProperty(default=1)
 bpy.types.Scene.StabBool = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.Cores = bpy.props.IntProperty(default=4)
+bpy.types.Scene.blender_path = bpy.props.StringProperty(
+    name="Blender start path",
+    # default = "C:\\Blender\\blender-2.78c-windows64\\",
+    default=Blender_file_start,
+    description="Define the path where Blender.exe is located",
+    subtype='DIR_PATH')
+bpy.types.Scene.my_string_prop_start = bpy.props.StringProperty(
+    name="Start frame",
+    description="Set start frame to render",
+    default="0001"
+)
+
+bpy.types.Scene.my_string_prop_end = bpy.props.StringProperty(
+    name="End frame",
+    description="Set last frame to render or equal to start to only render one frame",
+    default="0001"
+)
+bpy.types.Scene.bat_file_path = bpy.props.StringProperty(
+    name="Save bat file to",
+    default=Bat_file_start,
+    description="Define where to save the bat file",
+    subtype='FILE_PATH'
+)
+
+bpy.types.Scene.add_folder_path = bpy.props.StringProperty(
+    name="Folder with blend files",
+    default=Blender_files,
+    description="Where the blend files is located",
+    subtype='DIR_PATH'
+)
 
 
 class BE_OT_ScaleAdPicture(bpy.types.Operator):
     bl_idname = "object.be_ot_scaleadpicture"
     bl_label = "BE_OT_ScaleAdPicture"
 
-    @classmethod
+    @ classmethod
     def poll(cls, context):
         seq = context.scene.sequence_editor.active_strip
         if seq != None:
@@ -93,7 +125,7 @@ class BE_OT_SceneStripWStab(bpy.types.Operator):
         default=True,
     )
 
-    @classmethod
+    @ classmethod
     def poll(cls, context):
         return context.selected_sequences
 
@@ -145,62 +177,69 @@ class BE_OT_SceneStripWStab(bpy.types.Operator):
         return {"FINISHED"}
 
     def StabOption(self, context, start_scene_name, new_scene_name, filepath):
+        movieFilePath = filepath
+
         print("stab should start")
         bpy.context.window.scene = bpy.data.scenes[new_scene_name]
 
         # parsing filename
         filepath, filename = ntpath.split(filepath)
         moviefile = filepath + filename
-        print(f"file {filepath} filename {filename} moviefile {moviefile}")
-        bpy.ops.clip.open(directory=filepath, files=[
-                          {"name": filename}], relative_path=True)
+        print(
+            f"file {filepath} filename {filename} moviefile {moviefile} movieFilePath {movieFilePath} ")
+        # bpy.ops.clip.open(directory=filepath, files=[
+        #                  {"name": filename}], relative_path=True)
 
-        moviefile = filepath + filename
+        # moviefile = filepath + filename
+
+        S = bpy.context.scene
+        mc = bpy.data.movieclips.load(movieFilePath)
+
         print(moviefile)
+        compstabnodes(context, mc)
 
-        bpy.context.scene.use_nodes = True
-        # compoistor node create node tree
-        # C.scene.node_tree.nodes.new(
 
-        active = context.scene.node_tree.nodes.active
-        #mat = bpy.data.materials['AdvOceanMat']
-        # macht einen Diffuseshader
-        # mat.node_tree.nodes.new('ShaderNodeBsdfDiffuse')
-        node_tree = context.scene.node_tree
-        nodes = node_tree.nodes
+def compstabnodes(context, movieclip):
 
-        links = node_tree.links
+    context.scene.use_nodes = True
+    active = context.scene.node_tree.nodes.active
 
-        for node in nodes:
-            nodes.remove(node)
+    node_tree = context.scene.node_tree
+    nodes = node_tree.nodes
 
-        data = bpy.data
-        # Ocean
-        nodemov = nodes.new('CompositorNodeMovieClip')  # glossyshader machen
-        nodemov.location = (-1200, 000)
-        nodemov.clip = data.movieclips[filename]
+    links = node_tree.links
 
-        nodescale = nodes.new('CompositorNodeScale')  # glossyshader machen
-        nodescale.location = (-900, 000)
+    for node in nodes:
+        nodes.remove(node)
 
-        nodestab = nodes.new('CompositorNodeStabilize')  # glossyshader machen
-        nodestab.location = (-600, 000)
-        nodestab.clip = data.movieclips[filename]
+    data = bpy.data
 
-        nodecomp = nodes.new('CompositorNodeComposite')  # glossyshader machen
-        nodecomp.location = (-000, 000)
+    nodemov = nodes.new('CompositorNodeMovieClip')  # glossyshader machen
+    nodemov.location = (-1200, 000)
+    nodemov.clip = movieclip  # data.movieclips[filename]
 
-        # link basic OceanMaterial zum ersen Mix shader
-        links.new(nodemov.outputs[0],
-                  nodescale.inputs[0])
-        links.new(nodescale.outputs[0],
-                  nodestab.inputs[0])
-        links.new(nodestab.outputs[0],
-                  nodecomp.inputs[0])
+    nodescale = nodes.new('CompositorNodeScale')  # glossyshader machen
+    nodescale.location = (-900, 000)
 
-        bpy.ops.workspace.append_activate(idname='MotionTracking')
+    nodestab = nodes.new('CompositorNodeStabilize')  # glossyshader machen
+    nodestab.location = (-600, 000)
+    nodestab.clip = movieclip  # data.movieclips[filename]
 
-        context.space_data.clip = data.movieclips[filename]
+    nodecomp = nodes.new('CompositorNodeComposite')  # glossyshader machen
+    nodecomp.location = (-000, 000)
+
+    # link basic OceanMaterial zum ersen Mix shader
+    links.new(nodemov.outputs[0],
+              nodescale.inputs[0])
+    links.new(nodescale.outputs[0],
+              nodestab.inputs[0])
+    links.new(nodestab.outputs[0],
+              nodecomp.inputs[0])
+
+    bpy.ops.workspace.append_activate(idname='MotionTracking')
+    bpy.context.area.ui_type = 'CLIP_EDITOR'
+
+    context.space_data.clip = movieclip  # data.movieclips[filename]
 
 
 class BE_PT_pciscaleUI(bpy.types.Panel):
@@ -254,3 +293,48 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
         subcol.operator("vsepic.erase_file_info")
         subcol.operator("vsepic.open_file_in_notepad")
         subcol.operator("vsepic.start_bat_file")
+
+
+bpy.types.Scene.epicmovieclip = bpy.props.PointerProperty(
+    name="Movie", type=MovieClip)
+
+
+class BE_OT_CompStabOperator(bpy.types.Operator):
+    bl_idname = "object.compstaboperator"
+    bl_label = "BE_OT_CompStabOperator"
+
+    def execute(self, context):
+
+        if context.scene.epicmovieclip == None:
+            compstabnodes(context, None)
+        else:
+            compstabnodes(context, context.scene.epicmovieclip)
+
+        return {'FINISHED'}
+
+
+class BE_PT_VSECompUI(bpy.types.Panel):
+    bl_label = 'MuseumsLove'
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = 'VSEPicScale'
+
+    def draw(self, context):
+
+        data = bpy.data
+
+        layout = self.layout
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        flow = layout.grid_flow(row_major=True, columns=0,
+                                even_columns=False, even_rows=False, align=True)
+        col = flow.column()
+        row = layout.row()
+
+        subcol = col.column()
+
+        subcol.template_ID(context.scene, "epicmovieclip", open="clip.open")
+        subcol.operator("object.compstaboperator",
+                        text="Generate Stabilizing Setup")

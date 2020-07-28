@@ -578,7 +578,16 @@ def register():
     # bpy.utils.register_class(erase_file_info)
 
     # bpy.utils.register_class(add_from_folder)
+    '''
+    bpy.types.Scene.blender_path = bpy.props.StringProperty(
+        name="Blender start path",
+        #default = "C:\\Blender\\blender-2.78c-windows64\\",
+        default=Blender_file_start,
+        description="Define the path where Blender.exe is located",
+        subtype='DIR_PATH'
 
+    )
+    '''
     bpy.types.Scene.my_string_prop_start = bpy.props.StringProperty(
         name="Start frame",
         description="Set start frame to render",
@@ -590,16 +599,6 @@ def register():
         description="Set last frame to render or equal to start to only render one frame",
         default="0001"
     )
-
-    bpy.types.Scene.blender_path = bpy.props.StringProperty(
-        name="Blender start path",
-        #default = "C:\\Blender\\blender-2.78c-windows64\\",
-        default=Blender_file_start,
-        description="Define the path where Blender.exe is located",
-        subtype='DIR_PATH'
-
-    )
-
     bpy.types.Scene.bat_file_path = bpy.props.StringProperty(
         name="Save bat file to",
         default=Bat_file_start,
