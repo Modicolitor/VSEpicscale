@@ -72,6 +72,8 @@ class POWER_SEQUENCER_OT_scene_create_from_selection(bpy.types.Operator):
             bpy.ops.sequencer.select_all(action="INVERT")
             bpy.ops.power_sequencer.delete_direct()
             frame_offset = selection_start_frame - 1
+            print("frameoffset")
+            print(frame_offset)
             for s in context.sequences:
                 try:
                     s.frame_start -= frame_offset

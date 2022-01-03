@@ -16,8 +16,8 @@ from .Simple_Batch_Render import start_bat_file
 bl_info = {  # für export als addon
     "name": "VSEPicScale",
     "author": "Modicolitor",
-    "version": (0, 1),
-    "blender": (2, 83, 0),
+    "version": (0, 3),
+    "blender": (2, 93, 0),
     "location": "SEQUENCE_EDITOR > Tools",
     "description": "Scales pictures automatically by adding and adjusting a transform strip",
     "category": "Object"}

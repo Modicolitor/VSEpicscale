@@ -115,6 +115,18 @@ class BE_OT_ScaleAdPicture(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def delete_strips(context):
+    selection = context.selected_sequences
+    # if self.is_removing_transitions and bpy.ops.power_sequencer.transitions_remove.poll():
+    #    bpy.ops.power_sequencer.transitions_remove()
+    bpy.ops.sequencer.delete()
+
+    #report_message = "Deleted " + str(len(selection)) + " sequence"
+    #report_message += "s" if len(selection) > 1 else ""
+    #self.report({"INFO"}, report_message)
+    return {"FINISHED"}
+
+
 class BE_OT_SceneStripWStab(bpy.types.Operator):
     bl_idname = "object.be_ot_scenestripwstab"
     bl_label = "BE_OT_SceneStripWStab"
@@ -151,11 +163,20 @@ class BE_OT_SceneStripWStab(bpy.types.Operator):
 
             # after full copy also unselected strips are in the sequencer... Delete those strips
             bpy.ops.sequencer.select_all(action="INVERT")
-            bpy.ops.power_sequencer.delete_direct()
+            # bpy.ops.power_sequencer.delete_direct()
+            print('alive')
+            bpy.ops.sequencer.delete()
+            print('alive')
+
+            # um sequence_editor.sequences_all["DSC_1923_OpenMaryPan.MP4"].frame_offset_start nach hinten
+            # oder
+            #sequence_editor.sequences_all["DSC_1923_OpenMaryPan.MP4"].frame_start = 0
+
             frame_offset = selection_start_frame - 1
             for s in context.sequences:
                 try:
-                    s.frame_start -= frame_offset
+                    s.frame_start = 0  # frame_offset
+                    context.scene.frame_current = s.frame_offset_start
                 except Exception:
                     continue
             bpy.ops.sequencer.select_all()
@@ -219,6 +240,7 @@ def compstabnodes(context, movieclip):
 
     nodescale = nodes.new('CompositorNodeScale')  # glossyshader machen
     nodescale.location = (-900, 000)
+    nodescale.space = 'RENDER_SIZE'
 
     nodestab = nodes.new('CompositorNodeStabilize')  # glossyshader machen
     nodestab.location = (-600, 000)
