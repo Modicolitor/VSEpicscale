@@ -215,7 +215,7 @@ class BE_OT_SceneStripWStab(bpy.types.Operator):
 
         S = bpy.context.scene
         mc = bpy.data.movieclips.load(movieFilePath)
-
+        context.scene.epicmovieclip = mc
         print(moviefile)
         compstabnodes(context, mc)
 
@@ -396,3 +396,30 @@ class BE_PT_VSECompUI(bpy.types.Panel):
         subcol.template_ID(context.scene, "epicmovieclip", open="clip.open")
         subcol.operator("object.compstaboperator",
                         text="Generate Stabilizing Setup")
+
+
+class BE_PT_VSEStabUI(bpy.types.Panel):
+    bl_label = 'MuseumsLove'
+    bl_space_type = 'CLIP_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = 'VSEPicScale'
+
+    def draw(self, context):
+
+        data = bpy.data
+
+        layout = self.layout
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        flow = layout.grid_flow(row_major=True, columns=0,
+                                even_columns=False, even_rows=False, align=True)
+        col = flow.column()
+        row = layout.row()
+
+        subcol = col.column()
+
+        subcol.template_ID(context.scene, "epicmovieclip", open="clip.open")
+        subcol.operator("object.multipointstab",
+                        text="Animate Stabilization")
