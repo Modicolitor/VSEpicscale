@@ -48,6 +48,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         #    stabilization.tracks.append(track)
 
         # remove old keyframes of position in stabilisation
+        self.remove_targetpos_keys(clip)
 
         # start situation: is tracked
         # activate stabilisation and add
@@ -122,9 +123,17 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
                     # x-offset not transportet by uebertrag
                     endvalue = (endvalue[0] + self.offset_x, endvalue[1])
 
-                if not self.const_x or self.const_y:
+                if not self.const_x and not self.const_y:
+
+                    print("mainoffset")
                     endvalue = (endvalue[0] + self.offset_x,
                                 endvalue[1] + self.offset_y)
+
+                '''
+                if not self.const_y:
+                    endvalue = (endvalue[0] + self.offset_x,
+                                endvalue[1] + self.offset_y)
+                '''
 
                 print(f"übertrag {self.uebertrag}")
                 # Add Global Offset
@@ -139,8 +148,13 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         # if its the earliest track set initial values
         fcurves = clip.animation_data.action.fcurves
         for fcurve in fcurves:
-            for key in fcurve.keyframe_points:
-                key.interpolation = 'LINEAR'
+            for n, key in enumerate(fcurve.keyframe_points):
+                key.interpolation = 'BEZIER'
+                key.handle_right_type = 'VECTOR'
+                key.handle_left_type = 'VECTOR'
+                if n != len(fcurve.keyframe_points)-1:
+                    self.set_handle_pos(key, fcurve.keyframe_points[n+1])
+
         # bpy.data.movieclips["DSC_1923_OpenMaryPan.MP4"].animation_data.action.fcurves[0].keyframe_points[0].interpolation
 
         # if its last track set finale frame
@@ -150,6 +164,12 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         # set linear bpy.data.movieclips["DSC_1923_OpenMaryPan.MP4"].tracking.stabilization.target_position[1]
 
         return {'FINISHED'}
+
+    def set_handle_pos(self, key1, key2):
+        x = (key2.co[0] - key1.co[0])/2 + key1.co[0]
+        y = (key2.co[1] - key1.co[1])/2 + key1.co[1]
+        key1.handle_right = (x, y)
+        key2.handle_left = (x, y)
 
     def correct_scaleOffset(self, context, scale, sortedtracksinfo, n):
         # n 0     1                                                 2    3
@@ -199,3 +219,36 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
 
     def sort_tracks(self, tracks):
         pass
+
+    def remove_targetpos_keys(self, clip):
+
+        keys, action, data_path = self.get_keyframes_data_path(
+            clip, 'tracking.stabilization.target_position')  # schau hier nochmal rein tracking.stabilization.target_position
+        print(f'data path {data_path} keys amount {len(keys)}')
+        #wave_scale = get_largest_keyvalue(context, keys)
+        if len(keys) > 0:
+            for key in keys:
+                print('delete')
+                try:
+                    clip.tracking.stabilization.keyframe_delete(data_path='target_position',
+                                                                index=-1, frame=key.co[0])
+                except:
+                    print(f'Huppsi Key delete, no Action left at key {key.co}')
+        print('delete end')
+
+    def get_keyframes_data_path(self, object, data_path):
+        keys = []
+        action = None
+        if hasattr(object.animation_data, "action"):
+            action = object.animation_data.action
+            print('has action')
+            if hasattr(object.animation_data.action, "fcurves"):
+                print('has fcurves')
+                for fc in action.fcurves:
+                    if fc.data_path == data_path:
+                        print('found keys')
+                        for key in fc.keyframe_points:
+                            if key not in keys:
+                                keys.append(key)
+
+        return keys, action, data_path
