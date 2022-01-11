@@ -29,7 +29,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
             return False
 
     def execute(self, context):
-        print(context.area.type)
+        # print(context.area.type)
         clip = context.scene.epicmovieclip
         #clip = bpy.data.movieclips["DSC_1923_OpenMaryPan.MP4"]
         tracks = clip.tracking.tracks
@@ -39,37 +39,20 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         context.space_data.show_stable = True
         stabilization.target_scale = self.target_scale
 
+        # add all markers to stabilzisation
         for track in tracks:
             track.select = True
         bpy.ops.clip.stabilize_2d_add()
 
-        # add tracks to stabilzer
-        # for track in tracks:
-        #    stabilization.tracks.append(track)
-
         # remove old keyframes of position in stabilisation
         self.remove_targetpos_keys(clip)
 
-        # start situation: is tracked
-        # activate stabilisation and add
-        #  get coordinates of pic and track at each end of tracks
-        # start coordinaten at frame
-        # self.sort_tracks(tracks) sorting needs to be writen
-        sortedtracks = tracks
+        sortedtracks = self.sort_tracks(tracks)
         self.uebertrag = (0, 0)
 
         sortedtracksinfo = []
         for track in sortedtracks:
-            firstmarker = 0
-            while track.markers[firstmarker].mute:
-                print("first one ding")
-                print(firstmarker)
-                print(track.markers[firstmarker].frame)
-                firstmarker += 1
-                if firstmarker < len(track.markers)-1:
-                    print("first break")
-                    break
-
+            firstmarker, frame = self.get_track_start(track)
             startframe = [track.markers[firstmarker].frame,
                           track.markers[firstmarker].co]
 
@@ -84,10 +67,10 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
             trackinfo = startframe + endframe
             sortedtracksinfo.append(trackinfo)
 
-        print(sortedtracksinfo)
+        # print(sortedtracksinfo)
 
         for n, track in enumerate(sortedtracks):
-            print(f"n {n}")
+            #print(f"n {n}")
             # bist du ganz vorne: starte von 0,0,
             if True:  # n != len(sortedtracksinfo)-1:
                 startvalue = self.set_startvalueZero(
@@ -113,7 +96,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
                 if self.const_x:
                     self.uebertrag = (-endvalue[0], 0)
                     endvalue = (startvalue[0], endvalue[1])
-                    print('x const')
+                    #print('x const')
                     # y-offset not transportet by uebertrag
                     endvalue = (endvalue[0], endvalue[1] + self.offset_y)
 
@@ -125,7 +108,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
 
                 if not self.const_x and not self.const_y:
 
-                    print("mainoffset")
+                    # print("mainoffset")
                     endvalue = (endvalue[0] + self.offset_x,
                                 endvalue[1] + self.offset_y)
 
@@ -146,14 +129,18 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
 
         # set keyframes (xy) for each end of each track
         # if its the earliest track set initial values
-        fcurves = clip.animation_data.action.fcurves
-        for fcurve in fcurves:
-            for n, key in enumerate(fcurve.keyframe_points):
-                key.interpolation = 'BEZIER'
-                key.handle_right_type = 'VECTOR'
-                key.handle_left_type = 'VECTOR'
-                if n != len(fcurve.keyframe_points)-1:
-                    self.set_handle_pos(key, fcurve.keyframe_points[n+1])
+
+        if hasattr(clip.animation_data, "action"):
+            if hasattr(clip.animation_data.action, "fcurves"):
+                fcurves = clip.animation_data.action.fcurves
+                for fcurve in fcurves:
+                    for n, key in enumerate(fcurve.keyframe_points):
+                        key.interpolation = 'BEZIER'
+                        key.handle_right_type = 'VECTOR'
+                        key.handle_left_type = 'VECTOR'
+                        if n != len(fcurve.keyframe_points)-1:
+                            self.set_handle_pos(
+                                key, fcurve.keyframe_points[n+1])
 
         # bpy.data.movieclips["DSC_1923_OpenMaryPan.MP4"].animation_data.action.fcurves[0].keyframe_points[0].interpolation
 
@@ -180,23 +167,23 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         PNext = sortedtracksinfo[n+1][1]
 
         PStern = PJetzt + scale * (-PJetzt+PNext)
-        print(f'PNext {PNext}')
-        print(f'PJetzt {PJetzt}')
-        print(f'Pstern {PStern}')
+        #print(f'PNext {PNext}')
+        #print(f'PJetzt {PJetzt}')
+        #print(f'Pstern {PStern}')
 
         offset = PStern - PNext
-        print(f'scale offset is {offset}')
+        #print(f'scale offset is {offset}')
         return offset
 
     def correct_trackMovement(self, context, sortedtracksinfo, n):
 
         offset = -(sortedtracksinfo[n][1]-sortedtracksinfo[n][3])
-        print(f'Trackmovemnt offset is {offset}')
+        #print(f'Trackmovemnt offset is {offset}')
         return offset
 
     def set_startvalueZero(self, context, clip, sortedtracksinfo, n):
         startframe = sortedtracksinfo[n][0]
-        print(f'for {n} start uebertrag {self.uebertrag}')
+        #print(f'for {n} start uebertrag {self.uebertrag}')
         startvalue = (0+self.offset_x +
                       self.uebertrag[0], 0+self.offset_y + self.uebertrag[1])
 
@@ -218,17 +205,44 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         context.scene.frame_current = oriframecurrent
 
     def sort_tracks(self, tracks):
-        pass
+
+        # go through tracks and record first (enabled) frame
+        startframes = []
+        for track in tracks:
+            firstmarker, firstframe = self.get_track_start(track)
+            startframes.append(firstframe)
+
+        startframes.sort()
+        print(f'startframes {startframes}')
+        trackssorted = []
+        for start in startframes:
+            for track in tracks:
+                marker, frame = self.get_track_start(track)
+                if start == frame:
+                    trackssorted.append(track)
+        print(f'tracksorted {trackssorted}')
+        return trackssorted
+
+    def get_track_start(self, track):
+        firstmarker = 0
+        while track.markers[firstmarker].mute:
+            firstmarker += 1
+            if firstmarker < len(track.markers)-1:
+                #print("first break")
+                break
+
+        return firstmarker, track.markers[firstmarker].frame  # ,
+        # track.markers[firstmarker].co]
 
     def remove_targetpos_keys(self, clip):
 
         keys, action, data_path = self.get_keyframes_data_path(
             clip, 'tracking.stabilization.target_position')  # schau hier nochmal rein tracking.stabilization.target_position
-        print(f'data path {data_path} keys amount {len(keys)}')
+        #print(f'data path {data_path} keys amount {len(keys)}')
         #wave_scale = get_largest_keyvalue(context, keys)
         if len(keys) > 0:
             for key in keys:
-                print('delete')
+                # print('delete')
                 try:
                     clip.tracking.stabilization.keyframe_delete(data_path='target_position',
                                                                 index=-1, frame=key.co[0])
