@@ -9,6 +9,7 @@ from .vsepicscale import BE_OT_CompStabOperator
 from .vsepicscale import BE_OT_CorrectFPSOperator
 
 from .vsepicscale import BE_PT_VSEStabUI
+from .vsepicscale import BE_OT_Initialize
 
 from .Simple_Batch_Render import writes_bat_file
 from .Simple_Batch_Render import erase_file_info
@@ -16,6 +17,8 @@ from .Simple_Batch_Render import open_file_in_notepad
 from .Simple_Batch_Render import start_bat_file
 
 from .vse_stabilize import BE_OT_AnimateMultiPointStab
+
+from .vsepicprops import VSEpicPropertyGroup
 
 bl_info = {  # für export als addon
     "name": "VSEPicScale",
@@ -40,7 +43,9 @@ classes = (
     BE_OT_CompStabOperator,
     BE_OT_CorrectFPSOperator,
     BE_PT_VSEStabUI,
-    BE_OT_AnimateMultiPointStab
+    BE_OT_AnimateMultiPointStab,
+    VSEpicPropertyGroup,
+    BE_OT_Initialize,
 )
 
 register, unregister = bpy.utils.register_classes_factory(classes)

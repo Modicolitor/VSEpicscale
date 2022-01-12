@@ -1,9 +1,9 @@
-
-
 import bpy
 from operator import attrgetter
 import ntpath
 from .Simple_Batch_Render import *
+from .vsepicprops import VSEpicPropertyGroup
+
 from bpy.types import Scene, MovieClip
 import sys
 
@@ -356,6 +356,22 @@ bpy.types.Scene.epicmovieclip = bpy.props.PointerProperty(
     name="Movie", type=MovieClip)
 
 
+def initialize_addon():
+
+    bpy.types.Scene.vsepicprops = bpy.props.PointerProperty(
+        type=VSEpicPropertyGroup)
+
+
+class BE_OT_Initialize(bpy.types.Operator):
+    bl_idname = "scene.initializeaddon"
+    bl_label = "BE_OT_initializeaddon"
+
+    def execute(self, context):
+
+        initialize_addon()
+        return {'FINISHED'}
+
+
 class BE_OT_CompStabOperator(bpy.types.Operator):
     bl_idname = "object.compstaboperator"
     bl_label = "BE_OT_CompStabOperator"
@@ -420,6 +436,14 @@ class BE_PT_VSEStabUI(bpy.types.Panel):
 
         subcol = col.column()
 
-        subcol.template_ID(context.scene, "epicmovieclip", open="clip.open")
-        subcol.operator("object.multipointstab",
-                        text="Animate Stabilization")
+        if hasattr(context.scene, "vsepicprops"):
+
+            subcol.template_ID(
+                context.scene, "epicmovieclip", open="clip.open")
+
+            subcol.operator("object.multipointstab",
+                            text="Animate Stabilization")
+
+        else:
+            subcol.operator("scene.initializeaddon",
+                            text="Initialize")
