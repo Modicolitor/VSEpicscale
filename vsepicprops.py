@@ -1,3 +1,4 @@
+from email.utils import encode_rfc2231
 import bpy
 from bpy.types import Scene, Image, Object, PropertyGroup, MovieTrackingTrack
 
@@ -31,6 +32,13 @@ class TrackElement(bpy.types.PropertyGroup):
 
 class VSEpicTrackCol(bpy.types.PropertyGroup):
     tracks:  bpy.props.CollectionProperty(type=TrackElement)
+    #list of lists grouping tracks in anschließende gruppen von tracks with pos or rot flag
+    tracksegments: []
+    #list of tracks for posstabilisation 
+    postracks: [] 
+    #list of tracks for rot/scale stabilisation
+    rottracks:[]
+    
 
     def update(self, context, tracks):
 
@@ -54,8 +62,191 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         # list of tracks as tuple for ui
         self.make_ui_list(context)
         # guess konfiguration: overlapping tracks, pos/rot decision, grouping for stab panels and final processing
+        self.make_track_lists()
+        #self.find_stabconfiguration()
 
-        # return list
+    def make_track_lists(self):
+        self.tracksegments = []
+        overviewlist = [] 
+        for t in self.tracks:
+            overviewlist.append(t)
+
+        for tr1 in overviewlist:
+            for tr2 in overviewlist:
+                if tr1 != tr2:
+                    #returns group of 
+                    overlaptype, quality, specifypos = self.find_overlap(tr1, tr2)
+                    self.put_target_segment(tr1, tr2, overlaptype, quality, specifypos) 
+                    ### [[t1, t2],[t4,t5], []]
+                    
+    def put_target_segment(self, tr1, tr2, overlaptype, quality, specifypos):
+        #alles leer
+        if len(self.tracksegments) == 0:
+            if overlaptype == 'overlap':
+                Notes = quality+specifypos
+                self.tracksegments.append([tr1,tr2,Notes])
+                return 
+              
+        ####nicht leer 
+        #gibts die schon ?
+        oplist = [tr1, tr2]
+        tr1_in = self.is_in_targetseqments(tr1)
+        tr2_in = self.is_in_targetseqments(tr2)
+                
+        if tr1_in:
+            oplist.pop(tr1) 
+        if tr2_in:
+            oplist.pop(tr2)
+        # beide schon drin 
+        if len(oplist) == 0:
+            return
+        
+        
+        if overlaptype == 'overlap': 
+            ## tr1 and tr2 overlapping and we find a segment that overlapps with them 
+            for segement in self.tracksegments[:]:
+                otype, oquality, ospecifypos = self.find_overlap(segement[0], tr1)  
+                if otype == 'overlap':
+                    if not tr1_in:
+                        segement.insert(-2, tr1)
+                    if not tr2_in:
+                        segement.insert(-2, tr2)
+                    segement[-1] += oquality+ospecifypos
+                    return
+            if len(oplist) == 2:  
+                ## tr1 and tr2 overlapping and we find a spot for the segment   
+                ###didn't find a existing segment --> make a new segment, find a place for it
+                for n,segement in enumerate(self.tracksegments[:]):
+                    otype0, quality0, specifypos0 = self.find_overlap(self.tracksegments[n], tr1)  
+                    if quality0 == 'perfect':
+                        if specifypos0 == 'front':
+                            self.tracksegments.insert(n, [tr1,tr2])
+                        elif specifypos0 == 'back':
+                            self.tracksegments.insert(n+1, [tr1,tr2])
+                        return
+                    ##!!!!!!!!!!hmmmm think about not perfect results
+                    ### don't forget the notes 
+
+
+                    ###way before first 
+                    if n == 0 and specifypos0 == 'front':
+                        self.tracksegments.insert(n, [tr1,tr2])
+                        return
+                    ###way after last
+                    if n == len(self.tracksegments) and specifypos0 == 'back': ###letzte bedingung zuviel?
+                        self.tracksegments.insert(n, [tr1,tr2])
+
+            ### if len(oplist) == 1: wenn sie overlapp sind wird es oben mit abgedeckt       
+
+
+        # when both are conti --> such wie oben aber je und dann zufügen 
+
+        #self.is_in_targetseqments(tr1): 
+
+
+            
+        if overlaptype == 'overlap':
+            if specifypos == "back":
+            preorder = [tr1,tr2]
+
+        
+
+        #is the element somwhere 
+
+    def is_in_targetseqments(self,tr1):
+        if len(self.tracksegments) == 0:
+            return False
+        for tracksegment in self.tracksegments:
+            for track in tracksegment: 
+                if track == tr1:
+                    return True
+        return False
+
+
+    def find_overlap(self, tr1, tr2):
+        ##### track2 relative to track1 , front means track2 is before track1 
+        ####overlaptype = conti, overlap;  quality =  perfect, tooshort, toolong; specifypos = front, back
+        start1 = tr1.startframe
+        end1 = tr1.endframe
+
+        start2 = tr2.startframe
+        end2 = tr2.endframe
+        
+        #perfect overlap: gleicher start gleiches ende 
+        if start1 == start2:
+           if end1 == end2:
+                overlaptype = 'overlap' 
+                quality = 'perfect'
+                specifypos = None
+                return overlaptype, quality, specifypos
+        #perfect conti front 
+        if start1-1 == end2:
+            overlaptype = 'conti' 
+            quality = 'perfect'
+            specifypos = 'front'
+            return overlaptype, quality, specifypos
+        #perfect conti back 
+        if end1+1 == start2:
+            overlaptype = 'conti' 
+            quality = 'perfect'
+            specifypos = 'back'
+            return overlaptype, quality, specifypos
+        # conti too short front /distant track 
+        if start1-1 > end2:
+            overlaptype = 'conti' 
+            quality = 'tooshort'
+            specifypos = 'front'
+            return overlaptype, quality, specifypos
+        # conti  too short back /distant track 
+        if end1+1 < start2:
+            overlaptype = 'conti' 
+            quality = 'tooshort'
+            specifypos = 'back'
+            return overlaptype, quality, specifypos
+        # conti  too long front /distant track
+        if start2 < start1:
+            if end2 > start1:
+                overlaptype = 'conti' 
+                quality = 'toolong'
+                specifypos = 'front'
+                return overlaptype, quality, specifypos
+        # conti  too long back /distant track 
+        if end2 > end1:
+            if end1 > start2:
+                overlaptype = 'conti' 
+                quality = 'toolong'
+                specifypos = 'back'
+                return overlaptype, quality, specifypos
+        #overlap too long front 
+        if end1 == end2:
+            if start2 < start1:
+                overlaptype = 'overlap' 
+                quality = 'toolong'
+                specifypos = 'front'
+                return overlaptype, quality, specifypos
+        #overlap too long back 
+        if start1==start2:
+            if end1 < end2:
+                overlaptype = 'overlap' 
+                quality = 'toolong'
+                specifypos = 'back'
+                return overlaptype, quality, specifypos
+        #overlap too short front 
+        if end1 == end2:
+            if start2 > start1:
+                overlaptype = 'overlap' 
+                quality = 'tooshort'
+                specifypos = 'front'
+                return overlaptype, quality, specifypos
+        #overlap too short back 
+        if start1==start2:
+            if end1 > end2:
+                overlaptype = 'overlap' 
+                quality = 'tooshort'
+                specifypos = 'back'
+                return overlaptype, quality, specifypos
+
+
     def pop_too_much(self, tracks):
         # fill a new list with all trackelements
         testlist = []
@@ -168,7 +359,7 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         #    if trackelement[0] == track[0]:
         #        return True
         return False
-
+    ###callback for ui tracker list
     def make_ui_list(self, context):
         list = []
         for n, track in enumerate(self.tracks):
@@ -210,11 +401,4 @@ class VSEpicPropertyGroup(bpy.types.PropertyGroup):
 
     # trackfactor: bpy.props.EnumProperty(items=get_track_list_callback()
     # )
-'''
-class VSEpicStabTrack(bpy.types.PropertyGroup):
-    pos: bpy.props.BoolProperty(
-        name='pos', description='Use Track for stabilization', default=True)
-    rot: bpy.props.BoolProperty(
-        name='pos', description='Use Track for stabilization', default=False)
 
-'''
