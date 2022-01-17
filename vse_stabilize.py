@@ -32,6 +32,8 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         name='Const Slope Y', description='Keep Slope Const', default=False)
     sel_slope: bpy.props.IntProperty(
         name='Slope Selection', description='Select the Sloop of a Track in timely order', default=1, min=1)
+    slope_factor:   bpy.props.FloatProperty(
+        name='SlopFactor', description='Adjust Slope with this Multiplier', default=1.0)
 
     @ classmethod
     def poll(cls, context):
@@ -65,8 +67,10 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         sortedtracks = self.sort_tracks(tracks)
         self.uebertrag = (0, 0)
 
+        # collect track infos
         sortedtracksinfo = []
-        for track in sortedtracks:
+        trackenumlist = []
+        for n, track in enumerate(sortedtracks):
             firstmarker, frame = self.get_track_start(track)
             startframe = [track.markers[firstmarker].frame,
                           track.markers[firstmarker].co]
@@ -82,8 +86,17 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
             trackinfo = startframe + endframe
             sortedtracksinfo.append(trackinfo)
 
-        # print(sortedtracksinfo)
+            # print(sortedtracksinfo)
+            trackenumlist.append(
+                (str(n), str(track.name), '1'))
 
+        # bpy.types.Scene.vsepictracks = bpy.props.EnumProperty(
+        #    items=trackenumlist)
+        print(trackenumlist)
+
+        #context.scene.vsepicprops.trackfactor = context.scene.vsepictracks
+
+        # calculate keyframe coord and set keyframes
         for n, track in enumerate(sortedtracks):
             #print(f"n {n}")
             # bist du ganz vorne: starte von 0,0,
@@ -149,6 +162,12 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
                     self.sel_slope = len(slopeinfos_x)
                 slope = slopeinfos_x[self.sel_slope*2-2][3]
                 self.set_const_slope(slope, slopeinfos_x)
+            if self.const_slope_y:
+                # choose slope
+                if self.sel_slope > len(slopeinfos_y):
+                    self.sel_slope = len(slopeinfos_y)
+                slope = slopeinfos_y[self.sel_slope*2-2][3]
+                self.set_const_slope(slope, slopeinfos_y)
             # calculate new pos of end, --> calc delta
 
             # add delta to the right keyframes
@@ -186,6 +205,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         context.scene.vsepicprops.const_slope_x = self.const_slope_x
         context.scene.vsepicprops.const_slope_y = self.const_slope_y
         context.scene.vsepicprops.sel_slope = self.sel_slope
+        context.scene.vsepicprops.slope_factor = self.slope_factor
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -200,6 +220,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         self.const_slope_x = context.scene.vsepicprops.const_slope_x
         self.const_slope_y = context.scene.vsepicprops.const_slope_y
         self.sel_slope = context.scene.vsepicprops.sel_slope
+        self.slope_factor = context.scene.vsepicprops.slope_factor
         return self.execute(context)
 
     def get_slopeinfos(self, clip):
@@ -231,6 +252,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
     def set_const_slope(self, slope, slopeinfos):
         # get [n, key, co, slope]
         #      0   1    2   3
+        slope *= self.slope_factor
         for l, info in enumerate(slopeinfos):
             # bei den endframes
             if info[0] % 2 != 0:

@@ -3,6 +3,9 @@ from operator import attrgetter
 import ntpath
 from .Simple_Batch_Render import *
 from .vsepicprops import VSEpicPropertyGroup
+# from .vsepicprops import VSEpicStabTrack
+from .vsepicprops import VSEpicTrackCol, TrackElement
+
 
 from bpy.types import Scene, MovieClip
 import sys
@@ -121,9 +124,9 @@ def delete_strips(context):
     #    bpy.ops.power_sequencer.transitions_remove()
     bpy.ops.sequencer.delete()
 
-    #report_message = "Deleted " + str(len(selection)) + " sequence"
-    #report_message += "s" if len(selection) > 1 else ""
-    #self.report({"INFO"}, report_message)
+    # report_message = "Deleted " + str(len(selection)) + " sequence"
+    # report_message += "s" if len(selection) > 1 else ""
+    # self.report({"INFO"}, report_message)
     return {"FINISHED"}
 
 
@@ -170,7 +173,7 @@ class BE_OT_SceneStripWStab(bpy.types.Operator):
 
             # um sequence_editor.sequences_all["DSC_1923_OpenMaryPan.MP4"].frame_offset_start nach hinten
             # oder
-            #sequence_editor.sequences_all["DSC_1923_OpenMaryPan.MP4"].frame_start = 0
+            # sequence_editor.sequences_all["DSC_1923_OpenMaryPan.MP4"].frame_start = 0
 
             frame_offset = selection_start_frame - 1
             for s in context.sequences:
@@ -356,10 +359,31 @@ bpy.types.Scene.epicmovieclip = bpy.props.PointerProperty(
     name="Movie", type=MovieClip)
 
 
-def initialize_addon():
+def initialize_addon(context):
 
+    # bpy.types.Scene.vsepic_trackscol = bpy.props.PointerProperty(
+    #    type=VSEpicTrackCol)
     bpy.types.Scene.vsepicprops = bpy.props.PointerProperty(
         type=VSEpicPropertyGroup)
+
+    clip = get_clip(context)
+    # generate TrackCol object auf dem Pointer
+    # print(context.scene.trackscollection.tracks)
+
+    context.scene.vsepicprops.trackscol.update(context, clip.tracking.tracks)
+
+    # bpy.types.MovieClip.vsetsstab = bpy.props.PointerProperty(
+    #    type=VSEpicStabTrack)
+
+    # bpy.props.PointerProperty(
+    #    type=VSEpicStabTrack)
+
+
+def get_clip(context):
+    # if context.scene.epicmovieclip != None: ##!!!!!!!!!!!!!!!!!!!hier muss das besser werden
+
+    clip = context.scene.epicmovieclip
+    return clip
 
 
 class BE_OT_Initialize(bpy.types.Operator):
@@ -368,7 +392,7 @@ class BE_OT_Initialize(bpy.types.Operator):
 
     def execute(self, context):
 
-        initialize_addon()
+        initialize_addon(context)
         return {'FINISHED'}
 
 
@@ -437,12 +461,30 @@ class BE_PT_VSEStabUI(bpy.types.Panel):
         subcol = col.column()
 
         if hasattr(context.scene, "vsepicprops"):
-
+            vsepicprops = context.scene.vsepicprops
             subcol.template_ID(
                 context.scene, "epicmovieclip", open="clip.open")
 
             subcol.operator("object.multipointstab",
                             text="Animate Stabilization")
+            subcol.prop(vsepicprops, "target_scale")
+            subcol.prop(vsepicprops, "offset_x")
+            subcol.prop(vsepicprops, "offset_y")
+            subcol.prop(vsepicprops, "mikrocorrect_x")
+            subcol.prop(vsepicprops, "mikrocorrect_y")
+            subcol.prop(vsepicprops, "const_x")
+            subcol.prop(vsepicprops, "const_y")
+            subcol.prop(vsepicprops, "const_slope_x")
+            subcol.prop(vsepicprops, "const_slope_y")
+            subcol.prop(vsepicprops, "sel_slope")
+            subcol.prop(vsepicprops, "slope_factor")
+            if hasattr(vsepicprops.trackscol, "ui_track_list"):
+                subcol.prop(vsepicprops.trackscol, "ui_track_list")
+                trackindex = int(vsepicprops.trackscol.ui_track_list)
+                subcol.prop(
+                    vsepicprops.trackscol.tracks[trackindex], 'posstab')
+                subcol.prop(
+                    vsepicprops.trackscol.tracks[trackindex], 'rotstab')
 
         else:
             subcol.operator("scene.initializeaddon",

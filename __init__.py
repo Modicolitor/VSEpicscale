@@ -19,6 +19,9 @@ from .Simple_Batch_Render import start_bat_file
 from .vse_stabilize import BE_OT_AnimateMultiPointStab
 
 from .vsepicprops import VSEpicPropertyGroup
+#from .vsepicprops import VSEpicStabTrack
+from .vsepicprops import VSEpicTrackCol
+from .vsepicprops import TrackElement
 
 bl_info = {  # für export als addon
     "name": "VSEPicScale",
@@ -44,8 +47,13 @@ classes = (
     BE_OT_CorrectFPSOperator,
     BE_PT_VSEStabUI,
     BE_OT_AnimateMultiPointStab,
-    VSEpicPropertyGroup,
+
     BE_OT_Initialize,
+    # VSEpicStabTrack,
+    TrackElement,
+    VSEpicTrackCol,
+    VSEpicPropertyGroup,
+
 )
 
 register, unregister = bpy.utils.register_classes_factory(classes)
