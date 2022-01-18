@@ -10,3 +10,16 @@
 
 
 [] remove powersequencer dependency (scene strip operator)
+
+
+[] add extra long overlap too long both 
+
+
+[] make solution function + user output
+
+[] add trim function 
+
+[] menü for active track for pos/rotstab and stuff selection
+
+low level
+[] update end first makes list of list before putting in blenders data structure ---> could be refactured 

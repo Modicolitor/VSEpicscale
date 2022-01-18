@@ -4,7 +4,7 @@ import ntpath
 from .Simple_Batch_Render import *
 from .vsepicprops import VSEpicPropertyGroup
 # from .vsepicprops import VSEpicStabTrack
-from .vsepicprops import VSEpicTrackCol, TrackElement
+from .vsepicprops import VSEpicTrackCol, VSEpicTrackElement
 
 
 from bpy.types import Scene, MovieClip
@@ -301,6 +301,24 @@ class BE_OT_CorrectFPSOperator(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BE_OT_VSEpicUpdateData(bpy.types.Operator):
+    '''Takes a selected audio and an active Video and corrects the time difference with a speed control'''
+    bl_idname = "vsepic.updatedata"
+    bl_label = "BE_OT_VSEEpicUpdateData"
+
+    @ classmethod
+    def poll(cls, context):
+
+        # len(context.selected_sequences) == 2 and context.scene.sequence_editor.active_strip.type == 'MOVIE'
+        return True
+
+    def execute(self, context):
+
+        context.scene.vsepicprops.trackscol.update()
+
+        return {'FINISHED'}
+
+
 class BE_PT_pciscaleUI(bpy.types.Panel):
     bl_label = 'MuseumsLove'
     bl_space_type = 'SEQUENCE_EDITOR'
@@ -464,9 +482,11 @@ class BE_PT_VSEStabUI(bpy.types.Panel):
             vsepicprops = context.scene.vsepicprops
             subcol.template_ID(
                 context.scene, "epicmovieclip", open="clip.open")
-
+            subcol.operator("vsepic.updatedata",
+                            text="Update Data")
             subcol.operator("object.multipointstab",
                             text="Animate Stabilization")
+
             subcol.prop(vsepicprops, "target_scale")
             subcol.prop(vsepicprops, "offset_x")
             subcol.prop(vsepicprops, "offset_y")

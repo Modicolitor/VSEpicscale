@@ -7,6 +7,7 @@ from .vsepicscale import BE_OT_SceneStripWStab
 from .vsepicscale import BE_PT_VSECompUI
 from .vsepicscale import BE_OT_CompStabOperator
 from .vsepicscale import BE_OT_CorrectFPSOperator
+from .vsepicscale import BE_OT_VSEpicUpdateData
 
 from .vsepicscale import BE_PT_VSEStabUI
 from .vsepicscale import BE_OT_Initialize
@@ -21,7 +22,8 @@ from .vse_stabilize import BE_OT_AnimateMultiPointStab
 from .vsepicprops import VSEpicPropertyGroup
 #from .vsepicprops import VSEpicStabTrack
 from .vsepicprops import VSEpicTrackCol
-from .vsepicprops import TrackElement
+from .vsepicprops import VSEpicTrackElement
+from .vsepicprops import VSEpicSegement
 
 bl_info = {  # für export als addon
     "name": "VSEPicScale",
@@ -47,10 +49,12 @@ classes = (
     BE_OT_CorrectFPSOperator,
     BE_PT_VSEStabUI,
     BE_OT_AnimateMultiPointStab,
+    BE_OT_VSEpicUpdateData,
 
     BE_OT_Initialize,
     # VSEpicStabTrack,
-    TrackElement,
+    VSEpicTrackElement,
+    VSEpicSegement,
     VSEpicTrackCol,
     VSEpicPropertyGroup,
 

@@ -8,12 +8,14 @@ from bpy.types import Scene, Image, Object, PropertyGroup, MovieTrackingTrack
 #    return items
 
 
-class TrackElement(bpy.types.PropertyGroup):
-    #track: bpy.props.PointerProperty(name='track', type=MovieTrackingTrack)
+class VSEpicTrackElement(bpy.types.PropertyGroup):
+    # track: bpy.props.PointerProperty(name='track', type=MovieTrackingTrack)
     posstab: bpy.props.BoolProperty(name='StabilizePosition', default=True)
-    rotstab: bpy.props.BoolProperty(name='StabilizeRotation', default=False)
+    rotstab: bpy.props.BoolProperty(name='StabilizeRotation', default=True)
+    firstmarker: bpy.props.IntProperty(name='firstmarker', default=-100)
     startframe: bpy.props.IntProperty(name='startframe', default=-100)
     startvalue = (-100, -100)
+    lastmarker: bpy.props.IntProperty(name='startframe', default=-100)
     endframe: bpy.props.IntProperty(name='startframe', default=-100)
     endvalue = (-100, -100)
 
@@ -30,22 +32,25 @@ class TrackElement(bpy.types.PropertyGroup):
         return self
 
 
+class VSEpicSegement(bpy.types.PropertyGroup):
+    tracks:  bpy.props.CollectionProperty(type=VSEpicTrackElement)
+
+
 class VSEpicTrackCol(bpy.types.PropertyGroup):
-    tracks:  bpy.props.CollectionProperty(type=TrackElement)
-    #list of lists grouping tracks in anschließende gruppen von tracks with pos or rot flag
-    tracksegments: []
-    #list of tracks for posstabilisation 
-    postracks: [] 
-    #list of tracks for rot/scale stabilisation
-    rottracks:[]
-    
+    tracks:  bpy.props.CollectionProperty(type=VSEpicTrackElement)
+    # list of lists grouping tracks in anschließende gruppen von tracks with pos or rot flag
+    segements: bpy.props.CollectionProperty(type=VSEpicSegement)
+    # list of tracks for posstabilisation
+    postracks: bpy.props.CollectionProperty(type=VSEpicTrackElement)
+    # list of tracks for rot/scale stabilisation
+    rottracks: bpy.props.CollectionProperty(type=VSEpicTrackElement)
 
     def update(self, context, tracks):
 
         print('alive')
         for track in tracks:
             print(track.name)
-            #self.trackelement = bpy.props.PointerProperty(type=TrackElement)
+            # self.trackelement = bpy.props.PointerProperty(type=VSEpicTrackElement)
             track, posstab, rotstab, firstmarker, startframe, startvalue, lastmarker, endframe, endvalue = self.get_trackdata(
                 track)
             # trackelement = [track, posstab, rotstab, firstmarker,
@@ -59,193 +64,363 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         if len(tracks) != len(self.tracks):
             self.pop_too_much(tracks)
 
+        self.tracksegments = []
         # list of tracks as tuple for ui
         self.make_ui_list(context)
         # guess konfiguration: overlapping tracks, pos/rot decision, grouping for stab panels and final processing
-        self.make_track_lists()
-        #self.find_stabconfiguration()
+        self.tracksegments = self.make_track_lists()
+        # translate track list into segments ----> necessary because I don't wanne refactore function before
+        self.fill_segments(self.tracksegments)
+        self.fill_postracks(self.tracksegments)
+        self.fill_rottracks(self.tracksegments)
+
+    def fill_segments(self, listoflists):
+        # print(listoflists)
+        self.segements.clear()
+        for list in listoflists:
+            seg = self.segements.add()
+            seg.name = str(list[0].startframe) + "-" + str(list[0].endframe)
+            for track in list:
+                newtrack = seg.tracks.add()
+                self.copy_track_data(track, newtrack)
+
+    def fill_postracks(self, listoflists):
+        self.postracks.clear()
+        for segement in listoflists:
+            oritrack = self.get_postrack(segement)
+            print(f'ortrack in postrack is {oritrack}')
+            if oritrack != None:
+                newtrack = self.postracks.add()
+                newtrack.name = oritrack.name
+                self.copy_track_data(oritrack, newtrack)
+
+    def fill_rottracks(self, listoflists):
+        self.rottracks.clear()
+        for list in listoflists:
+            oritrack = self.get_rottrack(list)
+            print(f'oritrack in rottrack is {oritrack}')
+            if oritrack != None:
+                newtrack = self.rottracks.add()
+                newtrack.name = oritrack.name
+                self.copy_track_data(oritrack, newtrack)
+
+    def get_rottrack(self, segement):
+        selection = []
+        for track in segement:
+            if track.rotstab:
+                selection.append(track)
+        le = len(selection)
+        if le == 1:
+            return selection[0]
+        elif le > 1:
+            print(
+                f'segment {segement[0].startframe} - {segement[0].endframe}  has more than 1 posstab choose first')
+            left = len(selection)
+            sel = selection[:]
+            for n, tr in enumerate(sel):
+                for postrack in self.postracks:
+                    if postrack.startvalue == tr.startvalue:
+                        selection.remove(tr)
+                        left = len(selection)
+                        if left == 1:
+                            break
+                if left == 1:
+                    break
+            print(
+                f'Choose {segement[0]} as rotstab in  selection 0 {selection[0]}')
+            return selection[0]
+        elif le == 0:
+            print(
+                f'segment {segement[0].startframe} - {segement[0].endframe} has no rotstab')
+            return None
+
+    def get_postrack(self, segement):
+        selection = []
+        for track in segement:
+            if track.posstab:
+                selection.append(track)
+        le = len(selection)
+
+        if le == 1:
+            return selection[0]
+        elif le > 1:
+            print(
+                f'segment {selection[0].startframe} - {selection[0].endframe} has more than 1 posstab choose first return []')
+            return selection[0]
+        elif le == 0:
+            print(
+                f'segment {selection[0].startframe} - {selection[0].endframe}  has no posstab')
+            return None
+
+    def copy_track_data(self, track, newtrack):
+        #track.track = newtrack.track
+        track.posstab = newtrack.posstab
+        track.rotstab = newtrack.rotstab
+        track.firstmarker = newtrack.firstmarker
+        track.startframe = newtrack.startframe
+        track.startvalue = newtrack.startvalue
+        track.lastmarker = newtrack.lastmarker
+        track.endframe = newtrack.endframe
+        track.endvalue = newtrack.endvalue
 
     def make_track_lists(self):
-        self.tracksegments = []
-        overviewlist = [] 
+        # self.tracksegments = []
+        overviewlist = []
         for t in self.tracks:
             overviewlist.append(t)
 
         for tr1 in overviewlist:
             for tr2 in overviewlist:
                 if tr1 != tr2:
-                    #returns group of 
-                    overlaptype, quality, specifypos = self.find_overlap(tr1, tr2)
-                    self.put_target_segment(tr1, tr2, overlaptype, quality, specifypos) 
-                    ### [[t1, t2],[t4,t5], []]
-                    
+                    # returns group of
+                    overlaptype, quality, specifypos = self.find_overlap(
+                        tr1, tr2)
+                    print('---------------')
+                    print(f'tr1 {tr1.name} tr2 {tr2.name}')
+                    print(f'overlaptype {overlaptype}')
+                    print(f'overlaptype {quality}')
+                    print(f'overlaptype {specifypos}')
+                    print('---------------')
+
+                    self.put_target_segment(
+                        tr1, tr2, overlaptype, quality, specifypos)
+                    # [[t1, t2],[t4,t5], []]
+                    self.Ctlintermediattracksegments(self.tracksegments)
+                    complete = self.is_trackSegcomplete()
+                    if complete:
+                        break
+            if complete:
+                break
+        return self.tracksegments
+
     def put_target_segment(self, tr1, tr2, overlaptype, quality, specifypos):
-        #alles leer
+        # alles leer
+        # Notes = quality+specifypos
         if len(self.tracksegments) == 0:
             if overlaptype == 'overlap':
-                Notes = quality+specifypos
-                self.tracksegments.append([tr1,tr2,Notes])
-                return 
-              
-        ####nicht leer 
-        #gibts die schon ?
+                self.tracksegments.append([tr1, tr2])
+                print(
+                    f'put intial overlap for these {tr1.name} and {tr2.name}')
+                print(f'tracksegement after initial{self.tracksegments}')
+                return
+            elif overlaptype == 'conti':
+                if specifypos == 'front':
+                    self.tracksegments.append([tr2])
+                    self.tracksegments.append([tr1])
+                    print(
+                        'put initial conti front for these {tr1.name} and {tr2.name}')
+                    print(f'tracksegement after initial{self.tracksegments}')
+                elif specifypos == 'back':
+                    self.tracksegments.append([tr1])
+                    self.tracksegments.append([tr2])
+                    print(
+                        'put initial conti back for these {tr1.name} and {tr2.name}')
+                    print(f'tracksegement after initial{self.tracksegments}')
+
+        # nicht leer
+        # gibts die schon ?
         oplist = [tr1, tr2]
         tr1_in = self.is_in_targetseqments(tr1)
         tr2_in = self.is_in_targetseqments(tr2)
-                
+
         if tr1_in:
-            oplist.pop(tr1) 
+            oplist.remove(tr1)
         if tr2_in:
-            oplist.pop(tr2)
-        # beide schon drin 
+            oplist.remove(tr2)
+        # beide schon drin
         if len(oplist) == 0:
+            print('beide schon drin')
             return
-        
-        
-        if overlaptype == 'overlap': 
-            ## tr1 and tr2 overlapping and we find a segment that overlapps with them 
+
+        print(f'oplist {oplist}')
+
+        if overlaptype == 'overlap':
+            # tr1 and tr2 overlapping and we find a segment that overlapps with them
             for segement in self.tracksegments[:]:
-                otype, oquality, ospecifypos = self.find_overlap(segement[0], tr1)  
+                otype, oquality, ospecifypos = self.find_overlap(
+                    segement[0], tr1)
                 if otype == 'overlap':
                     if not tr1_in:
-                        segement.insert(-2, tr1)
+                        segement.insert(-1, tr1)
+                        print('put 3')
+
                     if not tr2_in:
-                        segement.insert(-2, tr2)
-                    segement[-1] += oquality+ospecifypos
+                        segement.insert(-1, tr2)
+
+                    print('put 4')
                     return
-            if len(oplist) == 2:  
-                ## tr1 and tr2 overlapping and we find a spot for the segment   
-                ###didn't find a existing segment --> make a new segment, find a place for it
-                for n,segement in enumerate(self.tracksegments[:]):
-                    otype0, quality0, specifypos0 = self.find_overlap(self.tracksegments[n], tr1)  
+            if len(oplist) == 2:
+                # tr1 and tr2 overlapping and we find a spot for the segment
+                # didn't find a existing segment --> make a new segment, find a place for it
+                for n, segement in enumerate(self.tracksegments[:]):
+                    otype0, quality0, specifypos0 = self.find_overlap(
+                        self.tracksegments[n], tr1)
                     if quality0 == 'perfect':
                         if specifypos0 == 'front':
-                            self.tracksegments.insert(n, [tr1,tr2])
+                            self.tracksegments.insert(n, [tr1, tr2])
                         elif specifypos0 == 'back':
-                            self.tracksegments.insert(n+1, [tr1,tr2])
+                            self.tracksegments.insert(n+1, [tr1, tr2])
                         return
-                    ##!!!!!!!!!!hmmmm think about not perfect results
-                    ### don't forget the notes 
+                    # !!!!!!!!!!hmmmm think about not perfect results
 
-
-                    ###way before first 
+                    # way before first
                     if n == 0 and specifypos0 == 'front':
-                        self.tracksegments.insert(n, [tr1,tr2])
+                        self.tracksegments.insert(n, [tr1, tr2])
                         return
-                    ###way after last
-                    if n == len(self.tracksegments) and specifypos0 == 'back': ###letzte bedingung zuviel?
-                        self.tracksegments.insert(n, [tr1,tr2])
+                    # way after last
+                    # letzte bedingung zuviel?
+                    if n == len(self.tracksegments) and specifypos0 == 'back':
+                        self.tracksegments.insert(n, [tr1, tr2])
+                        return
+        elif overlaptype == 'conti':
+            for tr in oplist:
+                for n, segement in enumerate(self.tracksegments[:]):
+                    print(f' {segement[0]}')
+                    otype0, quality0, specifypos0 = self.find_overlap(
+                        segement[0], tr)
+                    print(f'sub {otype0} {quality0} {specifypos0}')
+                    # notes = quality0 + specifypos0
+                    if otype0 == 'overlap':
+                        segement.insert(-1, tr)
+                        print('found a place overlapping')
+                        break
+                        # segement[-1] += notes
+                    elif otype0 == 'conti':
+                        if quality0 == 'perfect' and specifypos0 == 'front':
+                            # gibts eins davor
+                            self.tracksegments.insert(n, [tr])
+                            print('found a the front position ')
+                            break
 
-            ### if len(oplist) == 1: wenn sie overlapp sind wird es oben mit abgedeckt       
+                        elif quality0 == 'perfect' and specifypos0 == 'back':
+                            # test if the next segments overlaps
+                            if n != len(self.tracksegments):
+                                o, q, s = self.find_overlap(
+                                    tr, self.tracksegments[n+1][0])
+                                # is the next overlapping otherwise insert
+                                if o == 'overlap' and q == 'perfect':
+                                    self.tracksegments[n+1].insert(-1, tr)
+                                    break
+                                    print('found back position ')
+                                    # self.tracksegments[n+1][-1] += notes
+                                else:
+                                    # seems to be nothing good behind
+                                    self.tracksegments.insert(n+1, [tr])
+                                    break
+                                    print('found back position under else')
+                            else:
+                                self.tracksegments.append([tr])
+                                break
 
+        print('reached the end')
 
-        # when both are conti --> such wie oben aber je und dann zufügen 
+    def is_trackSegcomplete(self):
+        tracks = self.tracks[:]
+        for seg in self.tracksegments:
+            for t in seg:
+                if t in tracks:
+                    tracks.remove(t)
+                    if len(tracks) == 0:
+                        break
+        return len(tracks) == 0
 
-        #self.is_in_targetseqments(tr1): 
+    def Ctlintermediattracksegments(self, tracksegments):
+        for n, seg in enumerate(tracksegments):
+            print(f'Segment {n}')
+            for track in seg:
+                print(f'      Segment {track.name}')
 
-
-            
-        if overlaptype == 'overlap':
-            if specifypos == "back":
-            preorder = [tr1,tr2]
-
-        
-
-        #is the element somwhere 
-
-    def is_in_targetseqments(self,tr1):
+    def is_in_targetseqments(self, tr1):
         if len(self.tracksegments) == 0:
             return False
         for tracksegment in self.tracksegments:
-            for track in tracksegment: 
+            for track in tracksegment:
                 if track == tr1:
                     return True
         return False
 
-
     def find_overlap(self, tr1, tr2):
-        ##### track2 relative to track1 , front means track2 is before track1 
-        ####overlaptype = conti, overlap;  quality =  perfect, tooshort, toolong; specifypos = front, back
+        # track2 relative to track1 , front means track2 is before track1
+        # overlaptype = conti, overlap;  quality =  perfect, tooshort, toolong; specifypos = front, back
         start1 = tr1.startframe
         end1 = tr1.endframe
 
         start2 = tr2.startframe
         end2 = tr2.endframe
-        
-        #perfect overlap: gleicher start gleiches ende 
+
+        # perfect overlap: gleicher start gleiches ende
         if start1 == start2:
-           if end1 == end2:
-                overlaptype = 'overlap' 
+            if end1 == end2:
+                overlaptype = 'overlap'
                 quality = 'perfect'
                 specifypos = None
                 return overlaptype, quality, specifypos
-        #perfect conti front 
+        # perfect conti front
         if start1-1 == end2:
-            overlaptype = 'conti' 
+            overlaptype = 'conti'
             quality = 'perfect'
             specifypos = 'front'
             return overlaptype, quality, specifypos
-        #perfect conti back 
+        # perfect conti back
         if end1+1 == start2:
-            overlaptype = 'conti' 
+            overlaptype = 'conti'
             quality = 'perfect'
             specifypos = 'back'
             return overlaptype, quality, specifypos
-        # conti too short front /distant track 
+        # conti too short front /distant track
         if start1-1 > end2:
-            overlaptype = 'conti' 
+            overlaptype = 'conti'
             quality = 'tooshort'
             specifypos = 'front'
             return overlaptype, quality, specifypos
-        # conti  too short back /distant track 
+        # conti  too short back /distant track
         if end1+1 < start2:
-            overlaptype = 'conti' 
+            overlaptype = 'conti'
             quality = 'tooshort'
             specifypos = 'back'
             return overlaptype, quality, specifypos
         # conti  too long front /distant track
         if start2 < start1:
             if end2 > start1:
-                overlaptype = 'conti' 
+                overlaptype = 'conti'
                 quality = 'toolong'
                 specifypos = 'front'
                 return overlaptype, quality, specifypos
-        # conti  too long back /distant track 
+        # conti  too long back /distant track
         if end2 > end1:
             if end1 > start2:
-                overlaptype = 'conti' 
+                overlaptype = 'conti'
                 quality = 'toolong'
                 specifypos = 'back'
                 return overlaptype, quality, specifypos
-        #overlap too long front 
+        # overlap too long front
         if end1 == end2:
             if start2 < start1:
-                overlaptype = 'overlap' 
+                overlaptype = 'overlap'
                 quality = 'toolong'
                 specifypos = 'front'
                 return overlaptype, quality, specifypos
-        #overlap too long back 
-        if start1==start2:
+        # overlap too long back
+        if start1 == start2:
             if end1 < end2:
-                overlaptype = 'overlap' 
+                overlaptype = 'overlap'
                 quality = 'toolong'
                 specifypos = 'back'
                 return overlaptype, quality, specifypos
-        #overlap too short front 
+        # overlap too short front
         if end1 == end2:
             if start2 > start1:
-                overlaptype = 'overlap' 
+                overlaptype = 'overlap'
                 quality = 'tooshort'
                 specifypos = 'front'
                 return overlaptype, quality, specifypos
-        #overlap too short back 
-        if start1==start2:
+        # overlap too short back
+        if start1 == start2:
             if end1 > end2:
-                overlaptype = 'overlap' 
+                overlaptype = 'overlap'
                 quality = 'tooshort'
                 specifypos = 'back'
                 return overlaptype, quality, specifypos
-
 
     def pop_too_much(self, tracks):
         # fill a new list with all trackelements
@@ -272,8 +447,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
             if ele.name == track.name:
                 print(f'found Track with same name {ele.name}')
                 ele.track = track
-                #ele.posstab =  posstab
-                #ele.rotstab = rotstab
+                # ele.posstab =  posstab
+                # ele.rotstab = rotstab
                 ele.firstmarker = firstmarker
                 ele.startframe = startframe
                 ele.startvalue = startvalue
@@ -288,8 +463,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
                 if ele.startframe == startframe:
                     ele.name = track.name
                     ele.track = track
-                    #ele.posstab =  posstab
-                    #ele.rotstab = rotstab
+                    # ele.posstab =  posstab
+                    # ele.rotstab = rotstab
                     ele.firstmarker = firstmarker
                     ele.startframe = startframe
                     ele.startvalue = startvalue
@@ -301,8 +476,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
                 if ele.endframe == startframe:
                     ele.name = track.name
                     ele.track = track
-                    #ele.posstab =  posstab
-                    #ele.rotstab = rotstab
+                    # ele.posstab =  posstab
+                    # ele.rotstab = rotstab
                     ele.firstmarker = firstmarker
                     ele.startframe = startframe
                     ele.startvalue = startvalue
@@ -329,8 +504,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         # just the defaults
         posstab = True
         rotstab = False
-        #firstmarker = firstmarker
-        #startframe = startframe
+        # firstmarker = firstmarker
+        # startframe = startframe
         startvalue = track.markers[firstmarker].co
         # lastmarker =
         endframe = track.markers[lastmarker].frame
@@ -342,7 +517,7 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         while track.markers[firstmarker].mute:
             firstmarker += 1
             if firstmarker < len(track.markers)-1:
-                #print("first break")
+                # print("first break")
                 break
         return firstmarker, track.markers[firstmarker].frame
 
@@ -359,7 +534,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         #    if trackelement[0] == track[0]:
         #        return True
         return False
-    ###callback for ui tracker list
+
+    # callback for ui tracker list
     def make_ui_list(self, context):
         list = []
         for n, track in enumerate(self.tracks):
@@ -401,4 +577,3 @@ class VSEpicPropertyGroup(bpy.types.PropertyGroup):
 
     # trackfactor: bpy.props.EnumProperty(items=get_track_list_callback()
     # )
-
