@@ -313,8 +313,9 @@ class BE_OT_VSEpicUpdateData(bpy.types.Operator):
         return True
 
     def execute(self, context):
-
-        context.scene.vsepicprops.trackscol.update()
+        clip = get_clip(context)
+        context.scene.vsepicprops.trackscol.update(
+            context, clip.tracking.tracks)
 
         return {'FINISHED'}
 
@@ -388,12 +389,9 @@ def initialize_addon(context):
     # generate TrackCol object auf dem Pointer
     # print(context.scene.trackscollection.tracks)
 
-    context.scene.vsepicprops.trackscol.update(context, clip.tracking.tracks)
+    #context.scene.vsepicprops.trackscol.update(context, clip.tracking.tracks)
 
     # bpy.types.MovieClip.vsetsstab = bpy.props.PointerProperty(
-    #    type=VSEpicStabTrack)
-
-    # bpy.props.PointerProperty(
     #    type=VSEpicStabTrack)
 
 

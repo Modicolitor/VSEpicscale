@@ -46,27 +46,18 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
 
     def execute(self, context):
         oriframecurrent = copy.copy(context.scene.frame_current)
-        clip = self.clip
+
         stabilization = self.clip.tracking.stabilization
 
         stabilization.use_2d_stabilization = True
-        stabilization.use_stabilize_rotation = True
         context.space_data.show_stable = True
         stabilization.target_scale = self.target_scale
 
         # deselect all tracks
         self.deselect_tracks(self.realtracks)
-
-        # remove tracks in stabilize and rotation
-        self.remove_tracks_bl_ui_lists()
-
-        # add tracks to stabilzisation
+        # add all markers to stabilzisation
         postracks = self.trackscol.postracks
-
-        print(f'initial postracks {postracks}')
-
         for track in postracks:
-            print('add to postrack blui {track.name}')
             tr = self.get_real_track(track)
             tr.select = True
         bpy.ops.clip.stabilize_2d_add()
@@ -77,23 +68,21 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         for track in rottracks:
             tr = self.get_real_track(track)
             tr.select = True
-        bpy.ops.clip.stabilize_2d_rotation_add()
+        bpy.ops.clip.stabilize_2d_add()
 
         # remove old keyframes of position in stabilisation
         self.remove_targetpos_keys(self.clip)
 
-        '''
-        # old extract info part
-        #sortedtracks = self.get_real_tracks(postracks)
-        #print(f' initial sortedtracks {sortedtracks} ')
-        #rottracks = self.get_real_tracks(rottracks)
-        #print(f' initial sortedtracks {rottracks} ')
-        
+        #### from here on only realtracks in lists#############################################
+        # transform
+        sortedtracks = self.get_real_tracks(postracks)
+        rottracks = self.get_real_tracks(rottracks)
 
-        sortedtracks = self.sort_tracks(clip.tracking.tracks)
-        # old extract info part
+        self.uebertrag = (0, 0)
+
         # collect track infos ----> shiftet to props.trackscol class
         sortedtracksinfo = []
+        trackenumlist = []
         for n, track in enumerate(sortedtracks):
             firstmarker, frame = self.get_track_start(track)
             startframe = [track.markers[firstmarker].frame,
@@ -110,40 +99,33 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
             trackinfo = startframe + endframe
             sortedtracksinfo.append(trackinfo)
 
-        print(sortedtracksinfo)
-        return {'FINISHED'}
-        '''
-        ####
-        # [Track
-        #       0 startframe
-        #       1 startvalue
-        #       2 endframe
-        #       3 endvalue
-        # Track2
-        #       0 startframe
-        #       1 startvalue
-        #       2 endframe
-        #       3 endvalue
-        # ]
+            # print(sortedtracksinfo)
+            trackenumlist.append(
+                (str(n), str(track.name), '1'))
+
+        # bpy.types.Scene.vsepictracks = bpy.props.EnumProperty(
+        #    items=trackenumlist)
+        print(trackenumlist)
+
+        #context.scene.vsepicprops.trackfactor = context.scene.vsepictracks
 
         # calculate keyframe coord and set keyframes
-        self.uebertrag = (0, 0)
-        for n, track in enumerate(postracks):
+        for n, track in enumerate(sortedtracks):
             #print(f"n {n}")
             # bist du ganz vorne: starte von 0,0,
 
             startvalue = self.set_startvalueZero(
-                context, self.clip, postracks, n)
+                context, self.clip, sortedtracksinfo, n)
 
-            endframe = track.endframe
+            endframe = sortedtracksinfo[n][2]
             # compensate track movement
 
             endvaluemove = self.correct_trackMovement(
-                context, postracks, n)
-            if n != len(postracks)-1:
+                context, sortedtracksinfo, n)
+            if n != len(sortedtracksinfo)-1:
                 # compensate Scaleoffset
                 endvaluescale = self.correct_scaleOffset(
-                    context, self.target_scale, postracks, n)
+                    context, self.target_scale, sortedtracksinfo, n)
 
                 endvalue = endvaluemove - endvaluescale
             else:
@@ -312,13 +294,6 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         print(slopeinfos_y)
         return slopeinfos_x, slopeinfos_y
 
-    def remove_tracks_bl_ui_lists(self):
-        while len(self.clip.tracking.stabilization.tracks) != 0:
-            bpy.ops.clip.stabilize_2d_remove()
-
-        while len(self.clip.tracking.stabilization.rotation_tracks) != 0:
-            bpy.ops.clip.stabilize_2d_rotation_remove()
-
     def set_const_slope(self, slope, slopeinfos):
         # get [n, key, co, slope]
         #      0   1    2   3
@@ -343,23 +318,23 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         key1.handle_right = (x, y)
         key2.handle_left = (x, y)
 
-    def correct_scaleOffset(self, context, scale, postracks, n):
+    def correct_scaleOffset(self, context, scale, sortedtracksinfo, n):
 
-        PJetzt = postracks[n].endvalue
-        PNext = postracks[n+1].startvalue
+        PJetzt = sortedtracksinfo[n][3]
+        PNext = sortedtracksinfo[n+1][1]
         PStern = PJetzt + scale * (-PJetzt+PNext)
         offset = PStern - PNext
         #print(f'scale offset is {offset}')
         return offset
 
-    def correct_trackMovement(self, context, postracks, n):
+    def correct_trackMovement(self, context, sortedtracksinfo, n):
 
-        offset = -(postracks[n].startvalue-postracks[n].endvalue)
+        offset = -(sortedtracksinfo[n][1]-sortedtracksinfo[n][3])
         #print(f'Trackmovemnt offset is {offset}')
         return offset
 
-    def set_startvalueZero(self, context, clip, postracks, n):
-        startframe = postracks[n].startframe
+    def set_startvalueZero(self, context, clip, sortedtracksinfo, n):
+        startframe = sortedtracksinfo[n][0]
         #print(f'for {n} start uebertrag {self.uebertrag}')
         startvalue = (0+self.offset_x +
                       self.uebertrag[0], 0+self.offset_y + self.uebertrag[1])
@@ -422,7 +397,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         #print(f'data path {data_path} keys amount {len(keys)}')
         #wave_scale = get_largest_keyvalue(context, keys)
         if len(keys) > 0:
-            for key in keys[:]:
+            for key in keys:
                 # print('delete')
                 try:
                     clip.tracking.stabilization.keyframe_delete(data_path='target_position',

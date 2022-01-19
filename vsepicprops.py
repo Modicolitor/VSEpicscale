@@ -9,26 +9,36 @@ from bpy.types import Scene, Image, Object, PropertyGroup, MovieTrackingTrack
 
 
 class VSEpicTrackElement(bpy.types.PropertyGroup):
-    # track: bpy.props.PointerProperty(name='track', type=MovieTrackingTrack)
+    #track: bpy.props.PointerProperty(name='track')
     posstab: bpy.props.BoolProperty(name='StabilizePosition', default=True)
     rotstab: bpy.props.BoolProperty(name='StabilizeRotation', default=True)
     firstmarker: bpy.props.IntProperty(name='firstmarker', default=-100)
     startframe: bpy.props.IntProperty(name='startframe', default=-100)
-    startvalue = (-100, -100)
+    startvalue: bpy.props.FloatVectorProperty(
+        name='startvalue', default=(0.0, 0.0), step=2, precision=2, size=2, subtype='COORDINATES')
     lastmarker: bpy.props.IntProperty(name='startframe', default=-100)
     endframe: bpy.props.IntProperty(name='startframe', default=-100)
-    endvalue = (-100, -100)
+    endvalue: bpy.props.FloatVectorProperty(
+        name='startvalue', default=(0.0, 0.0), step=2, precision=2, size=2, subtype='COORDINATES')
 
     def set_track(self, track, posstab, rotstab, firstmarker, startframe, startvalue, lastmarker, endframe, endvalue):
-        self.track = track
+        print('---------------------------------------------------------------')
+        print(
+            f'set a track {self.name} startvalue {startvalue} endvalue {endvalue}')
+        #self.track = track
         self.posstab = posstab
         self.rotstab = rotstab
         self.startframe = startframe
         self.startvalue = startvalue
+
         self.endframe = endframe
+        print(f'endvalue in set track {endvalue}')
         self.endvalue = endvalue
         self.firstmarker = firstmarker
         self.lastmarker = lastmarker
+        print(
+            f'new trackvalues {self.name} startvalue {self.startvalue} endvalue {self.endvalue}')
+        print('---------------------------------------------------------------')
         return self
 
 
@@ -53,6 +63,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
             # self.trackelement = bpy.props.PointerProperty(type=VSEpicTrackElement)
             track, posstab, rotstab, firstmarker, startframe, startvalue, lastmarker, endframe, endvalue = self.get_trackdata(
                 track)
+            print(endvalue)
+            # print(adf)
             # trackelement = [track, posstab, rotstab, firstmarker,
             #                startframe, startvalue, lastmarker, endframe, endvalue]
 
@@ -70,11 +82,11 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         # guess konfiguration: overlapping tracks, pos/rot decision, grouping for stab panels and final processing
         self.tracksegments = self.make_track_lists()
         # translate track list into segments ----> necessary because I don't wanne refactore function before
-        self.fill_segments(self.tracksegments)
+        self.fill_tracks(self.tracksegments)
         self.fill_postracks(self.tracksegments)
         self.fill_rottracks(self.tracksegments)
 
-    def fill_segments(self, listoflists):
+    def fill_tracks(self, listoflists):
         # print(listoflists)
         self.segements.clear()
         for list in listoflists:
@@ -82,6 +94,12 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
             seg.name = str(list[0].startframe) + "-" + str(list[0].endframe)
             for track in list:
                 newtrack = seg.tracks.add()
+                print(track)
+                print(track.name)
+                # track, posstab, rotstab, firstmarker, startframe, startvalue, lastmarker, endframe, endvalue = self.get_trackdata(
+                #    track)
+                # newtrack.set_track(track, posstab, rotstab, firstmarker,
+                #                   startframe, startvalue, lastmarker, endframe, endvalue)
                 self.copy_track_data(track, newtrack)
 
     def fill_postracks(self, listoflists):
@@ -154,14 +172,16 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
 
     def copy_track_data(self, track, newtrack):
         #track.track = newtrack.track
-        track.posstab = newtrack.posstab
-        track.rotstab = newtrack.rotstab
-        track.firstmarker = newtrack.firstmarker
-        track.startframe = newtrack.startframe
-        track.startvalue = newtrack.startvalue
-        track.lastmarker = newtrack.lastmarker
-        track.endframe = newtrack.endframe
-        track.endvalue = newtrack.endvalue
+        newtrack.posstab = track.posstab
+        newtrack.rotstab = track.rotstab
+        newtrack.firstmarker = track.firstmarker
+        newtrack.startframe = track.startframe
+        newtrack.startvalue[0] = track.startvalue[0]
+        newtrack.startvalue[1] = track.startvalue[1]
+        newtrack.lastmarker = track.lastmarker
+        newtrack.endframe = track.endframe
+        newtrack.endvalue[0] = track.endvalue[0]
+        newtrack.endvalue[1] = track.endvalue[1]
 
     def make_track_lists(self):
         # self.tracksegments = []
@@ -493,6 +513,7 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         print('track dont exist')
         newtrack = self.tracks.add()
         newtrack.name = track.name
+        newtrack.endvalue = (2, 3)
         newtrack.set_track(track, posstab, rotstab, firstmarker,
                            startframe, startvalue, lastmarker, endframe, endvalue)
 
@@ -574,6 +595,5 @@ class VSEpicPropertyGroup(bpy.types.PropertyGroup):
     slope_factor:   bpy.props.FloatProperty(
         name='SlopFactor', description='Adjust Slope with this Multiplier', default=1.0)
     trackscol: bpy.props.PointerProperty(type=VSEpicTrackCol)
-
     # trackfactor: bpy.props.EnumProperty(items=get_track_list_callback()
     # )
