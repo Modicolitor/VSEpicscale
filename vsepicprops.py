@@ -42,8 +42,13 @@ class VSEpicTrackElement(bpy.types.PropertyGroup):
         return self
 
 
+class VSEpicCommentElement(bpy.types.PropertyGroup):
+    comments: bpy.props.StringProperty(default='None')
+
+
 class VSEpicSegement(bpy.types.PropertyGroup):
     tracks:  bpy.props.CollectionProperty(type=VSEpicTrackElement)
+    comments: bpy.props.CollectionProperty(type=VSEpicCommentElement)
 
 
 class VSEpicTrackCol(bpy.types.PropertyGroup):
@@ -54,6 +59,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
     postracks: bpy.props.CollectionProperty(type=VSEpicTrackElement)
     # list of tracks for rot/scale stabilisation
     rottracks: bpy.props.CollectionProperty(type=VSEpicTrackElement)
+    ####
+    # ui tracklist at the bottom
 
     def update(self, context, tracks):
 
@@ -83,8 +90,27 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         self.tracksegments = self.make_track_lists()
         # translate track list into segments ----> necessary because I don't wanne refactore function before
         self.fill_tracks(self.tracksegments)
+        self.add_comments(self.segements)
+
         self.fill_postracks(self.tracksegments)
         self.fill_rottracks(self.tracksegments)
+
+    def add_comments(self, segements):
+
+        for seg in segements:
+            if len(seg.comments) == 0:
+                coms = seg.comments.add()
+                coms.name = seg.name
+            else:
+                seg.comments.clear()
+            for n, track in enumerate(seg.tracks):
+                print(len(seg.tracks))
+                if n != len(seg.tracks)-1:
+                    overlap, quality, posspec = self.find_overlap(
+                        seg.tracks[n], seg.tracks[n+1])
+                    com = seg.comments.add()
+                    com.name
+                    com.comment = quality + posspec
 
     def fill_tracks(self, listoflists):
         # print(listoflists)
@@ -94,8 +120,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
             seg.name = str(list[0].startframe) + "-" + str(list[0].endframe)
             for track in list:
                 newtrack = seg.tracks.add()
-                print(track)
-                print(track.name)
+                # print(track)
+                # print(track.name)
                 # track, posstab, rotstab, firstmarker, startframe, startvalue, lastmarker, endframe, endvalue = self.get_trackdata(
                 #    track)
                 # newtrack.set_track(track, posstab, rotstab, firstmarker,
@@ -565,7 +591,7 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         return list
 
     ui_track_list: bpy.props.EnumProperty(
-        name='Global Presets',  # SingleCoupltypes
+        name='Tracks',  # SingleCoupltypes
         description='ui_list',
         items=make_ui_list)
 

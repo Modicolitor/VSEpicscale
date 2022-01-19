@@ -23,6 +23,7 @@ from .vsepicprops import VSEpicPropertyGroup
 #from .vsepicprops import VSEpicStabTrack
 from .vsepicprops import VSEpicTrackCol
 from .vsepicprops import VSEpicTrackElement
+from .vsepicprops import VSEpicCommentElement
 from .vsepicprops import VSEpicSegement
 
 bl_info = {  # für export als addon
@@ -54,6 +55,7 @@ classes = (
     BE_OT_Initialize,
     # VSEpicStabTrack,
     VSEpicTrackElement,
+    VSEpicCommentElement,
     VSEpicSegement,
     VSEpicTrackCol,
     VSEpicPropertyGroup,
