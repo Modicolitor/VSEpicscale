@@ -39,15 +39,16 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
     @ classmethod
     def poll(cls, context):
 
-        if context.scene.epicmovieclip != None and context.area.type == 'CLIP_EDITOR':
+        if context.scene.epicmovieclip != None or context.area.type == 'CLIP_EDITOR':
             return True
         else:
             return False
 
     def execute(self, context):
         oriframecurrent = copy.copy(context.scene.frame_current)
-        clip = self.clip
-        stabilization = self.clip.tracking.stabilization
+        clip = context.scene.epicmovieclip
+        print(clip)
+        stabilization = clip.tracking.stabilization
 
         stabilization.use_2d_stabilization = True
         stabilization.use_stabilize_rotation = True
@@ -58,15 +59,15 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         self.deselect_tracks(self.realtracks)
 
         # remove tracks in stabilize and rotation
-        self.remove_tracks_bl_ui_lists()
+        self.remove_tracks_bl_ui_lists(clip)
 
         # add tracks to stabilzisation
         postracks = self.trackscol.postracks
 
         print(f'initial postracks {postracks}')
 
-        for track in postracks:
-            print('add to postrack blui {track.name}')
+        for track in postracks[:]:
+            print(f'add to postrack blui {track.name}')
             tr = self.get_real_track(track)
             tr.select = True
         bpy.ops.clip.stabilize_2d_add()
@@ -80,7 +81,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         bpy.ops.clip.stabilize_2d_rotation_add()
 
         # remove old keyframes of position in stabilisation
-        self.remove_targetpos_keys(self.clip)
+        self.remove_targetpos_keys(clip)
 
         '''
         # old extract info part
@@ -133,7 +134,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
             # bist du ganz vorne: starte von 0,0,
 
             startvalue = self.set_startvalueZero(
-                context, self.clip, postracks, n)
+                context, clip, postracks, n)
 
             endframe = track.endframe
             # compensate track movement
@@ -185,19 +186,29 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
             # calculate slops
             slopeinfos_x, slopeinfos_y = self.get_slopeinfos(
                 clip)
+            print(slopeinfos_x)
+            print(slopeinfos_y)
             # get [n, key, co, slope]
             #      0   1    2   3
             if self.const_slope_x:
                 # choose slope
                 if self.sel_slope > len(slopeinfos_x):
                     self.sel_slope = len(slopeinfos_x)
-                slope = slopeinfos_x[self.sel_slope*2-2][3]
+                if len(slopeinfos_y) < 1:
+                    slope = slopeinfos_x[self.sel_slope*2-2][3]
+                else:
+                    slope = slopeinfos_x[0][3]
+                #slope = slopeinfos_x[len(slopeinfos_x)-2][3]
                 self.set_const_slope(slope, slopeinfos_x)
             if self.const_slope_y:
                 # choose slope
                 if self.sel_slope > len(slopeinfos_y):
                     self.sel_slope = len(slopeinfos_y)
-                slope = slopeinfos_y[self.sel_slope*2-2][3]
+                if len(slopeinfos_y) != 1:
+                    slope = slopeinfos_y[self.sel_slope*2-2][3]
+                else:
+                    slope = slopeinfos_y[0][3]
+                print(f'slope {slope} ')
                 self.set_const_slope(slope, slopeinfos_y)
             # calculate new pos of end, --> calc delta
 
@@ -245,8 +256,8 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
 
         # print(context.area.type)
         # braucht aufmerksamkeit
-        self.clip = context.scene.epicmovieclip
-        self.realtracks = self.clip.tracking.tracks
+        clip = context.scene.epicmovieclip
+        self.realtracks = clip.tracking.tracks
 
         self.target_scale = context.scene.vsepicprops.target_scale
         self.offset_x = context.scene.vsepicprops.offset_x
@@ -312,11 +323,11 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         print(slopeinfos_y)
         return slopeinfos_x, slopeinfos_y
 
-    def remove_tracks_bl_ui_lists(self):
-        while len(self.clip.tracking.stabilization.tracks) != 0:
+    def remove_tracks_bl_ui_lists(self, clip):
+        while len(clip.tracking.stabilization.tracks) != 0:
             bpy.ops.clip.stabilize_2d_remove()
 
-        while len(self.clip.tracking.stabilization.rotation_tracks) != 0:
+        while len(clip.tracking.stabilization.rotation_tracks) != 0:
             bpy.ops.clip.stabilize_2d_rotation_remove()
 
     def set_const_slope(self, slope, slopeinfos):
@@ -363,7 +374,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         #print(f'for {n} start uebertrag {self.uebertrag}')
         startvalue = (0+self.offset_x +
                       self.uebertrag[0], 0+self.offset_y + self.uebertrag[1])
-
+        print(f'clip before keyframe')
         self.keyframe_targetposition(
             context, clip.tracking.stabilization, startframe, startvalue)
         return startvalue

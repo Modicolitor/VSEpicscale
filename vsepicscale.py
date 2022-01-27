@@ -496,6 +496,11 @@ class BE_PT_VSEStabUI(bpy.types.Panel):
             subcol.prop(vsepicprops, "const_slope_y")
             subcol.prop(vsepicprops, "sel_slope")
             subcol.prop(vsepicprops, "slope_factor")
+
+            if hasattr(vsepicprops.trackscol, "ui_comments"):
+                for com in vsepicprops.trackscol.ui_comments:
+                    subcol.label(text=com.comment)
+
             if hasattr(vsepicprops.trackscol, "ui_track_list"):
                 subcol.prop(vsepicprops.trackscol, "ui_track_list")
                 trackindex = int(vsepicprops.trackscol.ui_track_list)

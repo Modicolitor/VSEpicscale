@@ -23,3 +23,16 @@
 
 low level
 [] update end first makes list of list before putting in blenders data structure ---> could be refactured 
+
+[] jump to start/end of active track
+
+!!!!!!!![] real tracks need trimming too!!
+
+
+
+[] not safe when find_solution doesn't find overlap between elements
+
+
+
+
+[] scene selection button
