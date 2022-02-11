@@ -1,7 +1,7 @@
-from email.utils import encode_rfc2231
+#from email.utils import encode_rfc2231
 import bpy
-from bpy.types import Scene, Image, Object, PropertyGroup, MovieTrackingTrack
-import copy
+#from bpy.types import Scene, Image, Object, PropertyGroup, MovieTrackingTrack
+#import copy
 
 
 # def get_track_list_callback(context):
@@ -172,11 +172,19 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
                 self.set_only_rot(tr2_found, self.segements[s+1])
 
     def trim_solution(self, realtracks):
-        # trim start
 
-        # trim end
-
+        def update_addon_tracks(track, realtrack, frame, pos):
+            newendvalue = self.get_realtrack_co_at_frame(
+                realtrack, frame)
+            if newendvalue != None:
+                if pos == 'back':
+                    track.endframe = frame
+                    track.endvalue = newendvalue
+                elif pos == 'front':
+                    track.startframe = frame
+                    track.startvalue = newendvalue
         # still ignores that both might be too long and not perfekt
+
         for s, seg in enumerate(self.segements):
             if self.not_last(s, self.segements):
                 postrackend = self.get_postrack(seg)
@@ -220,17 +228,6 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
                 self.trim_realtrack(realpostrackstart, frame+1, 'front')
                 self.trim_realtrack(realrottrackstart, frame+1, 'front')
 
-                def update_addon_tracks(track, realtrack, frame, pos):
-                    newendvalue = self.get_realtrack_co_at_frame(
-                        realtrack, frame)
-                    if newendvalue != None:
-                        if pos == 'back':
-                            track.endframe = frame
-                            track.endvalue = newendvalue
-                        elif pos == 'front':
-                            track.startframe = frame
-                            track.startvalue = newendvalue
-
                 update_addon_tracks(
                     postrackend, realpostrackend, frame, 'back')
                 update_addon_tracks(
@@ -240,76 +237,62 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
                 update_addon_tracks(
                     rottrackstart, realrottrackstart, frame+1, 'front')
 
-        '''print('#############trim############')
-        for seg in self.segements:
-            print(f'Im in seg {seg.name} ')
-            postrack = self.get_postrack(seg)
-            realpostrack = self.get_realtrack(postrack, realtracks)
-            rottrack = self.get_rottrack(seg)
-            realrottrack = self.get_realtrack(rottrack, realtracks)
+        def find_start(startframe, bedingung, pos):
+            frame = startframe
+            test = True
+            while test:
+                if bedingung:
+                    test = False
+                elif frame == 0:
+                    print('follow track failed in loop')
+                    test = False
+                else:
+                    if pos == 'front':
+                        frame += 1
+                    elif pos == 'back':
+                        frame -= 1
+            return frame
 
-            # starframe
-            if postrack.startframe == rottrack.startframe:
-                print('start teh same')
-            elif postrack.startframe > rottrack.startframe:
-                print('trim start frame rot short')
-                # hier bestimmt postracks den start  --> rottrack adjusten
-                self.trim_realtrack(realrottrack, postrack.startframe, 'front')
-                newstartvalue = self.get_realtrack_co_at_frame(
-                    realrottrack, postrack.startframe)
-                if newstartvalue != None:
-                    rottrack.startframe = postrack.startframe
-                    rottrack.startvalue = newstartvalue
-                else:
-                    # das heißt hier ist einer tooshort und nicht vorher erkannt
-                    print(
-                        'aghhhhhhhhhhhhh neues co ist none, heißt hier hat der Tracker keine Marker .... ach man alter')
-            elif postrack.startframe < rottrack.startframe:
-                print('trim start frame pos short')
-                # hier bestimmt rottracks den start  --> postrack adjusten
-                self.trim_realtrack(realpostrack, rottrack.startframe, 'front')
-                newstartvalue = self.get_realtrack_co_at_frame(
-                    realpostrack, rottrack.startframe)
-                if newstartvalue != None:
-                    postrack.startframe = rottrack.startframe
-                    postrack.startvalue = newstartvalue
-                else:
-                    # das heißt hier ist einer tooshort und nicht vorher erkannt
-                    print(
-                        'aghhhhhhhhhhhhh neues co ist none, heißt hier hat der Tracker keine Marker .... ach man alter')
+        # trim start
+        postrackstart = self.get_postrack(self.segements[0])
+        rottrackstart = self.get_rottrack(self.segements[0])
 
-            # endframe
-            if postrack.endframe == rottrack.endframe:
-                print('end the same')
-                pass
-            elif postrack.endframe < rottrack.endframe:
-                print('trim end frame pos short')
-                # hier bestimmt postracks den end  --> rottrack adjusten
-                self.trim_realtrack(realrottrack, postrack.endframe, 'back')
-                newendvalue = self.get_realtrack_co_at_frame(
-                    realrottrack, postrack.endframe)
-                if newendvalue != None:
-                    rottrack.endframe = postrack.endframe
-                    rottrack.endvalue = newendvalue
-                else:
-                    # das heißt hier ist einer tooshort und nicht vorher erkannt
-                    print(
-                        'aghhhhhhhhhhhhh neues co ist none, heißt hier hat der Tracker keine Marker .... ach man alter')
-            elif postrack.endframe > rottrack.endframe:
-                print('trim end frame rot short')
-                # hier bestimmt rottracks den end  --> postrack adjusten
-                self.trim_realtrack(realpostrack, rottrack.endframe, 'back')
-                newendvalue = self.get_realtrack_co_at_frame(
-                    realpostrack, rottrack.endframe)
-                if newendvalue != None:
-                    postrack.endframe = rottrack.endframe
-                    postrack.endvalue = newendvalue
-                else:
-                    # das heißt hier ist einer tooshort und nicht vorher erkannt
-                    print(
-                        'aghhhhhhhhhhhhh neues co ist none, heißt end  hat der Tracker keine Marker .... ach man alter')
+        realpostrackstart = self.get_realtrack(postrackstart, realtracks)
+        realrottrackstart = self.get_realtrack(rottrackstart, realtracks)
 
-        print('  # trimEND!!!!!')'''
+        frame = postrackstart.startframe
+        frame = find_start(postrackstart.startframe,
+                           rottrackstart.startframe <= frame, 'front')
+
+        print(f'-----------Trim start to frame {frame}')
+        self.trim_realtrack(realpostrackstart, frame, 'front')
+        self.trim_realtrack(realrottrackstart, frame, 'front')
+
+        update_addon_tracks(
+            postrackstart, realpostrackstart, frame, 'front')
+        update_addon_tracks(
+            rottrackstart, realrottrackstart, frame, 'front')
+
+        # trim end
+        postrackend = self.get_postrack(self.segements[-1])
+        rottrackend = self.get_rottrack(self.segements[-1])
+        print(f'--Trim end initial frame {postrackend.endframe}')
+
+        realpostrackend = self.get_realtrack(postrackend, realtracks)
+        realrottrackend = self.get_realtrack(rottrackend, realtracks)
+
+        frame = find_start(postrackend.endframe,
+                           rottrackend.endframe >= frame, 'back')
+
+        print(f'-----------Trim end to frame {frame}')
+
+        self.trim_realtrack(realpostrackend, frame, 'back')
+        self.trim_realtrack(realrottrackend, frame, 'back')
+
+        update_addon_tracks(
+            postrackend, realpostrackend, frame, 'back')
+        update_addon_tracks(
+            rottrackend, realrottrackend, frame, 'back')
 
     def trim_realtrack(self, track, frame, position):
         # position is 'front' or 'back'
@@ -1057,6 +1040,8 @@ class VSEpicPropertyGroup(bpy.types.PropertyGroup):
         name='SlopFactor', description='Adjust Slope with this Multiplier', default=1.0)
     trackscol: bpy.props.PointerProperty(type=VSEpicTrackCol)
     scenename: bpy.props.StringProperty(default='None')
+    show_error_marks: bpy.props.BoolProperty(
+        name='show error marks', description='show error marks handler hack', default=True)
 
     # trackfactor: bpy.props.EnumProperty(items=get_track_list_callback()
     # )

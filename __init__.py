@@ -1,15 +1,15 @@
 import bpy
 from .vsepicscale import BE_OT_AddTransformStrip
 from .vsepicscale import BE_OT_ScaleAdPicture
-from .vsepicscale import BE_PT_pciscaleUI
+from .vsepic_ui import BE_PT_pciscaleUI
 from .vsepicscale import BE_OT_SceneStripWStab
 
-from .vsepicscale import BE_PT_VSECompUI
+from .vsepic_ui import BE_PT_VSECompUI
 from .vsepicscale import BE_OT_CompStabOperator
 from .vsepicscale import BE_OT_CorrectFPSOperator
 from .vsepicscale import BE_OT_VSEpicUpdateData
 
-from .vsepicscale import BE_PT_VSEStabUI
+from .vsepic_ui import BE_PT_VSEStabUI
 from .vsepicscale import BE_OT_Initialize
 
 from .Simple_Batch_Render import writes_bat_file
@@ -25,6 +25,8 @@ from .vsepicprops import VSEpicTrackCol
 from .vsepicprops import VSEpicTrackElement
 from .vsepicprops import VSEpicCommentElement
 from .vsepicprops import VSEpicSegement
+
+from .vsepic_draw import BE_OT_MarkProblems
 
 bl_info = {  # für export als addon
     "name": "VSEPicScale",
@@ -59,6 +61,7 @@ classes = (
     VSEpicSegement,
     VSEpicTrackCol,
     VSEpicPropertyGroup,
+    BE_OT_MarkProblems
 
 )
 
