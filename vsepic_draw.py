@@ -19,7 +19,8 @@ class BE_OT_MarkProblems(bpy.types.Operator):
         coords = []
         if self.show_marker:
             coords = self.find_nostrip(context)
-        drawlines_in_VSE(context, coords)
+        draw_in_vse.update_line_coords(coords)
+        #drawlines_in_VSE(context, coords)
 
         return {'FINISHED'}
 
@@ -40,7 +41,7 @@ class BE_OT_MarkProblems(bpy.types.Operator):
         return coords
 
     def frames_to_coords(self, errorlist):
-        #self.height = 100
+        # self.height = 100
         coords = []
         for frame in errorlist:
             start = (frame, 0)
@@ -110,20 +111,33 @@ class BE_OT_MarkProblems(bpy.types.Operator):
                 return True
 
 
-def drawlines_in_VSE(context, coords):
-    #coords = [(6, 0), (6, 100), (10, 0), (10, 100)]
-    shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')  # UNIFORM
+class draw_handler_vse:
+    # def drawlines_in_VSE(context, coords):
+    # coords = [(6, 0), (6, 100), (10, 0), (10, 100)]
 
-    def draw():
-        batch = batch_for_shader(shader, 'LINES', {"pos": coords})
-        vsepicprops = context.scene.vsepicprops
-        if vsepicprops.show_error_marks:  # self.show_marker:
-            shader.bind()
-            shader.uniform_float("color", (1, 0.5, 0, 0.1))
-            batch.draw(shader)
-        else:
-            shader.unbind()
-            bpy.types.SpaceSequenceEditor.draw_handler_remove(handler)
+    def __init__(self, context):
+        self.context = context
+        self.shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')  # UNIFORM
+        self.update_line_coords([])
+        self.make_handler()
 
-    handler = bpy.types.SpaceSequenceEditor.draw_handler_add(
-        draw, (), 'WINDOW', 'POST_VIEW')
+    def update_line_coords(self, coords):
+        self.batch = batch_for_shader(self.shader, 'LINES', {"pos": coords})
+
+    def make_handler(self):
+        def draw():
+            if hasattr(bpy.context.scene, 'vsepicprops'):
+                vsepicprops = bpy.context.scene.vsepicprops
+                if vsepicprops.show_error_marks:  # self.show_marker:
+                    self.shader.bind()
+                    self.shader.uniform_float("color", (1, 0.5, 0, 0.1))
+                    self.batch.draw(self.shader)
+                else:
+                    self.shader.unbind()
+                    # bpy.types.SpaceSequenceEditor.draw_handler_remove(handler)
+
+        self.handler = bpy.types.SpaceSequenceEditor.draw_handler_add(
+            draw, (), 'WINDOW', 'POST_VIEW')
+
+
+draw_in_vse = draw_handler_vse(bpy.context)
