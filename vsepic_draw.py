@@ -119,12 +119,12 @@ class draw_handler_vse:
         self.context = context
         self.shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')  # UNIFORM
         self.update_line_coords([])
-        self.make_handler()
+        self.make_line_handler()
 
     def update_line_coords(self, coords):
         self.batch = batch_for_shader(self.shader, 'LINES', {"pos": coords})
 
-    def make_handler(self):
+    def make_line_handler(self):
         def draw():
             if hasattr(bpy.context.scene, 'vsepicprops'):
                 vsepicprops = bpy.context.scene.vsepicprops
