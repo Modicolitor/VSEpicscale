@@ -26,15 +26,15 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
             subcol = col.column()
             seq = context.scene.sequence_editor.active_strip
 
-            subcol.label(text="Make Adjusted Transform strip")
-            subcol.operator("object.be_ot_addtransformstrip",
-                            text="Add Transform Strip", icon="PLUS")  # zeige button an
+            #subcol.label(text="Make Adjusted Transform strip")
+            # subcol.operator("object.be_ot_addtransformstrip",
+            #                text="Add Transform Strip", icon="PLUS")  # zeige button an
 
-            subcol = col.column()
-            subcol.label(text="Adjust pic scale (factor of transform)")
-            subcol.operator("object.be_ot_scaleadpicture",
-                            text="Adjust Transform Strip", icon="PLUS")
-            subcol.prop(context.scene, "PicScalefactor")
+            #subcol = col.column()
+            #subcol.label(text="Adjust pic scale (factor of transform)")
+            # subcol.operator("object.be_ot_scaleadpicture",
+            #                text="Adjust Transform Strip", icon="PLUS")
+            #subcol.prop(context.scene, "PicScalefactor")
 
             if seq != None:
                 if seq.type == 'TRANSFORM':
@@ -46,9 +46,15 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
             subcol = col.column()
             subcol.operator("object.be_ot_scenestripwstab",
                             text="SceneStrip", icon="PLUS")
-
-            subcol.operator("vsepic.markproblems")
-            subcol.prop(context.scene.vsepicprops, "show_error_marks")
+            subcol = col.box()
+            subcol.operator("vsepic.markproblems",
+                            text="Mark Problems", icon='BORDERMOVE')
+            subcol.prop(context.scene.vsepicprops,
+                        "show_error_marks", text='Toggle Marks')
+            subcol.prop(context.scene.vsepicprops,
+                        "check_coverage", text='Check Coverage')
+            subcol.prop(context.scene.vsepicprops,
+                        "check_blend_type", text='Check Blend Type')
 
             subcol = col.column()
             subcol.label(text="Quick Render")

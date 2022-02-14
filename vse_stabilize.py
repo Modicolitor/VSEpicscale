@@ -52,7 +52,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         stabilization = clip.tracking.stabilization
         self.clipratio = clip.size[0]/clip.size[1]
         stabilization.use_2d_stabilization = True
-        stabilization.use_stabilize_rotation = True
+        #stabilization.use_stabilize_rotation = True
         context.space_data.show_stable = True
         stabilization.target_scale = self.target_scale
 
@@ -77,10 +77,6 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
             tr = self.get_real_track(track)
             tr.select = True
         bpy.ops.clip.stabilize_2d_rotation_add()
-
-        # remove old keyframes of position in stabilisation
-        self.remove_targetpos_keys(clip)
-        self.remove_targetrot_keys(clip)
 
         #self.animate_targetrotation(postracks, rottracks)
 
@@ -155,6 +151,11 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
         self.const_slope_y = context.scene.vsepicprops.const_slope_y
         self.sel_slope = context.scene.vsepicprops.sel_slope
         self.slope_factor = context.scene.vsepicprops.slope_factor
+
+        # remove old keyframes of position in stabilisation
+        self.remove_targetpos_keys(clip)
+        self.remove_targetrot_keys(clip)
+
         return self.execute(context)
 
     def get_real_track(self, track):
@@ -251,28 +252,44 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
             # calculate slops
             slopeinfos_x, slopeinfos_y = self.get_slopeinfos(
                 clip)
-            print(slopeinfos_x)
-            print(slopeinfos_y)
+            print(f'slope infos x {slopeinfos_x}')
+            print(f'slope infos x {slopeinfos_y}')
             # get [n, key, co, slope]
             #      0   1    2   3
             if self.const_slope_x:
                 # choose slope
                 if self.sel_slope > len(slopeinfos_x):
                     self.sel_slope = len(slopeinfos_x)
-                if len(slopeinfos_y) < 1:
-                    slope = slopeinfos_x[self.sel_slope*2-2][3]
-                else:
+
+                if len(slopeinfos_x) < 1:
+                    return
+                    #slope = slopeinfos_x[self.sel_slope*2-2][3]
+                elif len(slopeinfos_x) == 1:
                     slope = slopeinfos_x[0][3]
+                elif len(slopeinfos_x) < 1:
+                    if len(slopeinfos_x)-1 >= self.sel_slope*2-2:
+                        slope = slopeinfos_x[self.sel_slope*2-2][3]
+                    else:
+                        slope = slopeinfos_x[-1][3]
                 #slope = slopeinfos_x[len(slopeinfos_x)-2][3]
                 self.set_const_slope(slope, slopeinfos_x)
+
             if self.const_slope_y:
                 # choose slope
                 if self.sel_slope > len(slopeinfos_y):
                     self.sel_slope = len(slopeinfos_y)
-                if len(slopeinfos_y) != 1:
-                    slope = slopeinfos_y[self.sel_slope*2-2][3]
-                else:
+
+                if len(slopeinfos_y) < 1:
+                    return
+                    # slope = slopeinfos_y[self.sel_slope*2-2][3]  # *2-2
+                elif len(slopeinfos_y) == 1:
                     slope = slopeinfos_y[0][3]
+                elif len(slopeinfos_y) > 1:
+                    if len(slopeinfos_y)-1 >= self.sel_slope*2-2:
+                        slope = slopeinfos_y[self.sel_slope*2-2][3]
+                    else:
+                        slope = slopeinfos_y[-1][3]
+
                 print(f'slope {slope} ')
                 self.set_const_slope(slope, slopeinfos_y)
             # calculate new pos of end, --> calc delta
@@ -320,6 +337,7 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
                         keys = fcurve.keyframe_points
                         for k, key in enumerate(keys):
                             slope = None
+                            co1 = key.co
                             if len(keys)-1 != k:
                                 co1 = key.co
                                 co2 = keys[k+1].co
@@ -329,8 +347,8 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
                                 slopeinfos_x.append(keyinfo)
                             if n == 1:
                                 slopeinfos_y.append(keyinfo)
-        print(slopeinfos_x)
-        print(slopeinfos_y)
+        # print(slopeinfos_x)
+        # print(slopeinfos_y)
         return slopeinfos_x, slopeinfos_y
 
     def remove_tracks_bl_ui_lists(self, clip):
@@ -343,20 +361,21 @@ class BE_OT_AnimateMultiPointStab(bpy.types.Operator):
     def set_const_slope(self, slope, slopeinfos):
         # get [n, key, co, slope]
         #      0   1    2   3
-        slope *= self.slope_factor
-        for l, info in enumerate(slopeinfos):
-            # bei den endframes
-            if info[0] % 2 != 0:
-                # berechne neue Position
-                distx = slopeinfos[l][1].co[0] - slopeinfos[l-1][1].co[0]
-                starty = slopeinfos[l-1][1].co[1]
-                oldy = slopeinfos[l][1].co[1]
-                newy = slope * distx + starty
-                offset = newy - oldy
+        if slope != None:
+            slope *= self.slope_factor
+            for l, info in enumerate(slopeinfos):
+                # bei den endframes
+                if info[0] % 2 != 0:
+                    # berechne neue Position
+                    distx = slopeinfos[l][1].co[0] - slopeinfos[l-1][1].co[0]
+                    starty = slopeinfos[l-1][1].co[1]
+                    oldy = slopeinfos[l][1].co[1]
+                    newy = slope * distx + starty
+                    offset = newy - oldy
 
-                slopeinfos[l][1].co[1] += offset
-                if l != len(slopeinfos)-1:
-                    slopeinfos[l+1][1].co[1] += offset
+                    slopeinfos[l][1].co[1] += offset
+                    if l != len(slopeinfos)-1:
+                        slopeinfos[l+1][1].co[1] += offset
 
     def set_handle_pos(self, key1, key2):
         x = (key2.co[0] - key1.co[0])/2 + key1.co[0]

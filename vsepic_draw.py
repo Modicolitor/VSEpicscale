@@ -10,17 +10,42 @@ class BE_OT_MarkProblems(bpy.types.Operator):
     bl_label = "BE_OT_MarkProblems"
     bl_options = {'REGISTER', 'UNDO'}
 
-    show_marker: bpy.props.BoolProperty(
-        name='Show markers', description='', default=True)
+    # show_marker: bpy.props.BoolProperty(
+    #    name='Show markers', description='', default=True)
+
     height: bpy.props.FloatProperty(
         name='Show markers', description='', default=50)
 
+    check_coverage: bpy.props.BoolProperty(
+        name='Check Coverage', description='', default=False)
+
+    check_blend_type: bpy.props.BoolProperty(
+        name='Check Blend Type', description='', default=True)
+
+    no_alpha_marks: bpy.props.BoolProperty(
+        name='Donot Show Alpha Marks', description='', default=True)
+
+    def invoke(self, context, event):
+        self.vsepicprops = context.scene.vsepicprops
+        self.check_blend_type = self.vsepicprops.check_blend_type
+        self.check_coverage = self.vsepicprops.check_coverage
+
+        return self.execute(context)
+
     def execute(self, context):
         coords = []
-        if self.show_marker:
+        if self.check_coverage:
             coords = self.find_nostrip(context)
         draw_in_vse.update_line_coords(coords)
-        #drawlines_in_VSE(context, coords)
+        # drawlines_in_VSE(context, coords)
+        if self.check_blend_type:
+            green, orange, red = self.find_blend_type(context.sequences)
+            if self.no_alpha_marks:
+                green = []
+
+            draw_in_vse.Tri_Green.update_coords(green)
+            draw_in_vse.Tri_Orange.update_coords(orange)
+            draw_in_vse.Tri_Red.update_coords(red)
 
         return {'FINISHED'}
 
@@ -110,6 +135,30 @@ class BE_OT_MarkProblems(bpy.types.Operator):
             if frame < seq.frame_final_start:
                 return True
 
+    # check for sequence alpha setting
+
+    def find_blend_type(self, sequences):
+        red = []
+        green = []
+        orange = []
+        for seq in sequences:
+            if seq.blend_type == 'ALPHA_OVER':
+                green.append(self.get_seq_coords(seq))
+            elif seq.blend_type == 'CROSS':
+                orange.append(self.get_seq_coords(seq))
+            else:
+                red.append(self.get_seq_coords(seq))
+
+        return green, orange, red
+
+    def get_seq_coords(self, seq):
+        y = seq.channel
+        x = seq.frame_final_start + \
+            (seq.frame_final_end - seq.frame_final_start)/2
+        print(f'for seq {seq.name} take coordinates {(x,y)}')
+
+        return (x, y)
+
 
 class draw_handler_vse:
     # def drawlines_in_VSE(context, coords):
@@ -118,8 +167,11 @@ class draw_handler_vse:
     def __init__(self, context):
         self.context = context
         self.shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')  # UNIFORM
+
         self.update_line_coords([])
         self.make_line_handler()
+
+        self.make_triangle_colors()
 
     def update_line_coords(self, coords):
         self.batch = batch_for_shader(self.shader, 'LINES', {"pos": coords})
@@ -138,6 +190,51 @@ class draw_handler_vse:
 
         self.handler = bpy.types.SpaceSequenceEditor.draw_handler_add(
             draw, (), 'WINDOW', 'POST_VIEW')
+
+    class triangles_in_VSE:
+        def __init__(self, context, col):
+            self.shader_tri_red = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+            self.update_coords([])
+            self.make_tri_red_handler(col)
+
+        def update_coords(self, seqcos):
+            #coords = [(0, 0), (0, 10), (20, 0)]
+            coords = self.seg_co_to_shader_co(seqcos)
+            self.batch_tri_red = batch_for_shader(
+                self.shader_tri_red, 'TRIS', {"pos": coords})
+
+        def seg_co_to_shader_co(self, seqcos):
+            self.width = 50
+            print(f'seqcos before {seqcos}')
+            coords = []
+            for seqco in seqcos:
+                x = seqco[0]
+                y = seqco[1]
+                coord = [(x-self.width, y), (x, y+0.9), (x+self.width, y)]
+                print(f'add coord {coord}')
+                coords += coord
+            print(coords)
+            return coords
+
+        def make_tri_red_handler(self, col):
+            def draw():
+                if hasattr(bpy.context.scene, 'vsepicprops'):
+                    vsepicprops = bpy.context.scene.vsepicprops
+                    if vsepicprops.show_error_marks:  # self.show_marker:
+                        self.shader_tri_red.bind()
+                        self.shader_tri_red.uniform_float("color", col)
+                        self.batch_tri_red.draw(self.shader_tri_red)
+                    else:
+                        self.shader_tri_red.unbind()
+                        # bpy.types.SpaceSequenceEditor.draw_handler_remove(handler)
+
+            self.handler = bpy.types.SpaceSequenceEditor.draw_handler_add(
+                draw, (), 'WINDOW', 'POST_VIEW')
+
+    def make_triangle_colors(self):
+        self.Tri_Green = self.triangles_in_VSE(self.context, (0, 1, 0, 1))
+        self.Tri_Orange = self.triangles_in_VSE(self.context, (1, 0.5, 0, 1))
+        self.Tri_Red = self.triangles_in_VSE(self.context, (1, 0, 0, 1))
 
 
 draw_in_vse = draw_handler_vse(bpy.context)

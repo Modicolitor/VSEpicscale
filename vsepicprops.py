@@ -168,8 +168,10 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
                                 break
                     if found:
                         break
-                self.set_only_rot(tr1_found, seg)
-                self.set_only_rot(tr2_found, self.segements[s+1])
+                if tr1_found != None:
+                    self.set_only_rot(tr1_found, seg)
+                if tr2_found != None:
+                    self.set_only_rot(tr2_found, self.segements[s+1])
 
     def trim_solution(self, realtracks):
 
@@ -189,8 +191,14 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
             if self.not_last(s, self.segements):
                 postrackend = self.get_postrack(seg)
                 rottrackend = self.get_rottrack(seg)
+                # hack when there is no rottrack
+                if rottrackend == None:
+                    rottrackend = postrackend
                 postrackstart = self.get_postrack(self.segements[s+1])
                 rottrackstart = self.get_rottrack(self.segements[s+1])
+                # hack when there is no rottrack
+                if rottrackstart == None:
+                    rottrackstart = postrackstart
 
                 print('schleife 1')
                 frame = postrackend.endframe
@@ -256,9 +264,12 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         # trim start
         postrackstart = self.get_postrack(self.segements[0])
         rottrackstart = self.get_rottrack(self.segements[0])
-
+        if rottrackstart == None:
+            rottrackstart = postrackstart
         realpostrackstart = self.get_realtrack(postrackstart, realtracks)
         realrottrackstart = self.get_realtrack(rottrackstart, realtracks)
+        if realrottrackstart == None:
+            rottrackstart = realpostrackstart
 
         frame = postrackstart.startframe
         frame = find_start(postrackstart.startframe,
@@ -276,6 +287,8 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         # trim end
         postrackend = self.get_postrack(self.segements[-1])
         rottrackend = self.get_rottrack(self.segements[-1])
+        if rottrackend == None:
+            rottrackend = postrackend
         print(f'--Trim end initial frame {postrackend.endframe}')
 
         realpostrackend = self.get_realtrack(postrackend, realtracks)
@@ -313,10 +326,12 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
         tr.rotstab = False
 
     def get_realtrack(self, track, realtracks):
-
-        for realtrack in realtracks:
-            if realtrack.name == track.name:
-                return realtrack
+        if track != None:
+            for realtrack in realtracks:
+                if realtrack.name == track.name:
+                    return realtrack
+        else:
+            return None
 
     def set_only_rot(self, tr, seg):
         for tracks in seg.tracks:
@@ -487,7 +502,7 @@ class VSEpicTrackCol(bpy.types.PropertyGroup):
             return selection[0]
         elif le == 0:
             print(
-                f'segment {segement[0].startframe} - {segement[0].endframe} has no rotstab')
+                f'segment has no rotstab')
             return None
 
     def get_postrack(self, segement):
@@ -1042,6 +1057,10 @@ class VSEpicPropertyGroup(bpy.types.PropertyGroup):
     scenename: bpy.props.StringProperty(default='None')
     show_error_marks: bpy.props.BoolProperty(
         name='show error marks', description='show error marks handler hack', default=True)
+    check_coverage: bpy.props.BoolProperty(
+        name='Check Coverage', description='', default=True)
+    check_blend_type: bpy.props.BoolProperty(
+        name='Check Blend Type', description='', default=True)
 
     # trackfactor: bpy.props.EnumProperty(items=get_track_list_callback()
     # )
