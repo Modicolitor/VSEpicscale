@@ -159,6 +159,8 @@ class BE_OT_MarkProblems(bpy.types.Operator):
 
         return (x, y)
 
+# make one line draw handler and several triangle handlers (class)
+
 
 class draw_handler_vse:
     # def drawlines_in_VSE(context, coords):

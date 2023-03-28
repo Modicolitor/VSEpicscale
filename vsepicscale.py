@@ -60,6 +60,47 @@ class BE_OT_AddTransformStrip(bpy.types.Operator):
         #    transformStrip.scale_start_y = pic_height/r_height
         return {'FINISHED'}
 
+class BE_OT_UpdateVisList(bpy.types.Operator):
+    bl_idname = "sequencer.savevislist"
+    bl_label = "Save Vis List"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        mutelist = context.scene.vsepicprops.mutelist
+        mutelist.clear()
+        seqs= context.scene.sequence_editor.sequences_all
+        for seq in seqs:
+            new = mutelist.add()
+            new.name=seq.name
+            new.mute=seq.mute
+        
+        return {'FINISHED'}
+
+class BE_OT_ApplyVisList(bpy.types.Operator):
+    bl_idname = "sequencer.applyvislist"
+    bl_label = "Apply Vis List"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        mutelist = context.scene.vsepicprops.mutelist
+        seqs= context.scene.sequence_editor.sequences_all
+        for seq in seqs:
+            for ele in mutelist:
+                if ele.name == seq.name:
+                    seq.mute = ele.mute
+            
+        
+        
+        return {'FINISHED'}
+
+
+
 
 bpy.types.Scene.PicScalefactor = bpy.props.FloatProperty(default=1)
 bpy.types.Scene.StabBool = bpy.props.BoolProperty(default=True)

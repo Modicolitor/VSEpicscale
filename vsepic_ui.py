@@ -65,6 +65,14 @@ class BE_PT_pciscaleUI(bpy.types.Panel):
             subcol.operator("vsepic.erase_file_info")
             subcol.operator("vsepic.open_file_in_notepad")
             subcol.operator("vsepic.start_bat_file")
+            
+            subcol = col.column()
+            subcol.label(text="Save Visibility State")
+            subcol.operator("sequencer.savevislist")
+            subcol.operator("sequencer.applyvislist")
+            
+            
+            
         else:
             subcol = col.column()
             subcol.operator("scene.initializeaddon",

@@ -25,21 +25,24 @@ from .vsepicprops import VSEpicTrackCol
 from .vsepicprops import VSEpicTrackElement
 from .vsepicprops import VSEpicCommentElement
 from .vsepicprops import VSEpicSegement
+from .vsepicprops import VSEpicVISElement
+from .vsepicscale import BE_OT_UpdateVisList
+from .vsepicscale import BE_OT_ApplyVisList
 
 from .vsepic_draw import BE_OT_MarkProblems
 
-bl_info = {  # für export als addon
+bl_info = {
     "name": "VSEPicScale",
     "author": "Modicolitor",
-    "version": (0, 3),
-    "blender": (2, 93, 0),
+    "version": (0, 4),
+    "blender": (3, 0, 1),
     "location": "SEQUENCE_EDITOR > Tools",
     "description": "Scales pictures automatically by adding and adjusting a transform strip",
     "category": "Object"}
 
 
 classes = (
-    BE_OT_AddTransformStrip,
+    #BE_OT_AddTransformStrip,
     BE_PT_pciscaleUI,
     BE_OT_ScaleAdPicture,
     BE_OT_SceneStripWStab,
@@ -60,9 +63,15 @@ classes = (
     VSEpicCommentElement,
     VSEpicSegement,
     VSEpicTrackCol,
+    
+    BE_OT_MarkProblems,
+    VSEpicVISElement,
+    BE_OT_UpdateVisList,
+    BE_OT_ApplyVisList,
     VSEpicPropertyGroup,
-    BE_OT_MarkProblems
-
 )
 
 register, unregister = bpy.utils.register_classes_factory(classes)
+
+# bpy.types.Scene.vsepicprops = bpy.props.PointerProperty(
+#    type=VSEpicPropertyGroup)

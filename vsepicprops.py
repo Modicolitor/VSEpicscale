@@ -42,6 +42,11 @@ class VSEpicTrackElement(bpy.types.PropertyGroup):
         print('---------------------------------------------------------------')
         return self
 
+class VSEpicVISElement(bpy.types.PropertyGroup):
+    name:bpy.props.StringProperty(default='None')
+    mute:bpy.props.BoolProperty(name='Is Hiden', default=True)
+
+
 
 class VSEpicCommentElement(bpy.types.PropertyGroup):
     comment: bpy.props.StringProperty(default='None')
@@ -1061,6 +1066,7 @@ class VSEpicPropertyGroup(bpy.types.PropertyGroup):
         name='Check Coverage', description='', default=True)
     check_blend_type: bpy.props.BoolProperty(
         name='Check Blend Type', description='', default=True)
+    mutelist:  bpy.props.CollectionProperty(type=VSEpicVISElement)
 
     # trackfactor: bpy.props.EnumProperty(items=get_track_list_callback()
     # )
