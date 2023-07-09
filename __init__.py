@@ -5,6 +5,7 @@ from .vsepic_ui import BE_PT_pciscaleUI
 from .vsepicscale import BE_OT_SceneStripWStab
 
 from .vsepic_ui import BE_PT_VSECompUI
+
 from .vsepicscale import BE_OT_CompStabOperator
 from .vsepicscale import BE_OT_CorrectFPSOperator
 from .vsepicscale import BE_OT_VSEpicUpdateData
@@ -31,6 +32,9 @@ from .vsepicscale import BE_OT_ApplyVisList
 
 from .vsepic_draw import BE_OT_MarkProblems
 
+from .epic_nodes import BE_OT_CorrectAttributes
+from .epic_nodes  import BE_PT_NodeEditorUi
+
 bl_info = {
     "name": "VSEPicScale",
     "author": "Modicolitor",
@@ -56,7 +60,8 @@ classes = (
     BE_PT_VSEStabUI,
     BE_OT_AnimateMultiPointStab,
     BE_OT_VSEpicUpdateData,
-
+    
+    BE_PT_NodeEditorUi,
     BE_OT_Initialize,
     # VSEpicStabTrack,
     VSEpicTrackElement,
@@ -69,6 +74,7 @@ classes = (
     BE_OT_UpdateVisList,
     BE_OT_ApplyVisList,
     VSEpicPropertyGroup,
+    BE_OT_CorrectAttributes,
 )
 
 register, unregister = bpy.utils.register_classes_factory(classes)

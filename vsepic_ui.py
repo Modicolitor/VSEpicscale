@@ -165,3 +165,7 @@ class BE_PT_VSEStabUI(bpy.types.Panel):
         else:
             subcol.operator("scene.initializeaddon",
                             text="Initialize")
+
+
+
+
