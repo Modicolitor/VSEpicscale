@@ -38,8 +38,8 @@ from .epic_nodes  import BE_PT_NodeEditorUi
 bl_info = {
     "name": "VSEPicScale",
     "author": "Modicolitor",
-    "version": (0, 4),
-    "blender": (3, 0, 1),
+    "version": (0, 5),
+    "blender": (4, 0, 2),
     "location": "SEQUENCE_EDITOR > Tools",
     "description": "Scales pictures automatically by adding and adjusting a transform strip",
     "category": "Object"}

@@ -168,7 +168,7 @@ class draw_handler_vse:
 
     def __init__(self, context):
         self.context = context
-        self.shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')  # UNIFORM
+        self.shader = gpu.shader.from_builtin('UNIFORM_COLOR')  # UNIFORM
 
         self.update_line_coords([])
         self.make_line_handler()
@@ -195,7 +195,7 @@ class draw_handler_vse:
 
     class triangles_in_VSE:
         def __init__(self, context, col):
-            self.shader_tri_red = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+            self.shader_tri_red = gpu.shader.from_builtin('UNIFORM_COLOR')
             self.update_coords([])
             self.make_tri_red_handler(col)
 
